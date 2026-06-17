@@ -12,16 +12,18 @@ const createApp = require('./src/app');
 
 const SerialService = require('./src/services/serialService');
 const moService     = require('./src/services/moService');
+const mqttService   = require('./src/services/mqttService');
 
 const WeightController = require('./src/controllers/weightController');
-const LedController    = require('./src/controllers/ledController');
-const StatusController = require('./src/controllers/statusController');
 
 /* ════════════════════════════════════════════════════════════
    SERIAL CLIENTS
 ════════════════════════════════════════════════════════════ */
 const serialSmall = new SerialService(null, 'small', config.scales.small);
 const serialLarge = new SerialService(null, 'large', config.scales.large);
+
+const mqttClient = new mqttService();
+
 
 /** Combined adapter — presents a single interface to controllers */
 const serialClient = {
@@ -73,10 +75,8 @@ const serialClient = {
    EXPRESS + HTTP SERVER
 ════════════════════════════════════════════════════════════ */
 const weightController = new WeightController(serialClient);
-const ledController    = new LedController(serialClient);
-const statusController = new StatusController(serialClient, serialSmall, serialLarge);
 
-const app    = createApp({ weightController, ledController, statusController });
+const app    = createApp({ weightController });
 const server = http.createServer(app);
 
 /* ════════════════════════════════════════════════════════════

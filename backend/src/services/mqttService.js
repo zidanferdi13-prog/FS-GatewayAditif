@@ -45,30 +45,25 @@ class MQTTClient {
       this.io.emit('mqtt-status', { connected: true });
       
       // Subscribe to main topic (backward compatibility)
-      this.client.subscribe(config.mqtt.topic, (err) => {
+      this.client.subscribe(config.mqtt.topic.data, (err) => {
         if (!err) {
-          console.log(`📡 Subscribed to topic: ${config.mqtt.topic}`);
+          console.log(`📡 Subscribed to topic: ${config.mqtt.topic.data}`);
         } else {
           console.error('❌ Subscription error:', err);
         }
       });
-      
-      // Subscribe to load cell topics
-      this.client.subscribe(this.topics.telemetry, (err) => {
-        if (!err) {
-          console.log(`📡 Subscribed to topic: ${this.topics.telemetry}`);
-        } else {
-          console.error('❌ Subscription error:', err);
+
+      this.client.publish(config.mqtt.topic.status,
+        JSON.stringify({ status: 'connected', timestamp: new Date().toISOString() }),
+        { qos: 1, retain: true },
+        (err) => {
+          if (err) {
+            console.error('❌ Failed to publish status:', err);
+          } else {            
+            console.log('📢 Published initial status message');
+          }      
         }
-      });
-      
-      this.client.subscribe(this.topics.button, (err) => {
-        if (!err) {
-          console.log(`📡 Subscribed to topic: ${this.topics.button}`);
-        } else {
-          console.error('❌ Subscription error:', err);
-        }
-      });
+      );
     });
 
     this.client.on('message', (topic, message) => {
@@ -137,6 +132,7 @@ class MQTTClient {
     this.client.on('reconnect', () => {
       console.log('🔄 Reconnecting to MQTT broker...');
     });
+
   }
 
   // Load cell specific methods
@@ -243,7 +239,7 @@ class MQTTClient {
       return false;
     }
   }
-  
+
   getLatestWeight() {
     return this.latestWeight;
   }

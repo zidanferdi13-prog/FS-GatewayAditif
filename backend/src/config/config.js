@@ -1,5 +1,7 @@
 'use strict';
 
+const { default: mqtt } = require('mqtt');
+
 require('dotenv').config();
 
 module.exports = {
@@ -35,6 +37,16 @@ module.exports = {
     kanban: {
       baseUrl:         process.env.KANBAN_API_URL   || 'https://services.ama.id/kanban',
       findOneEndpoint: '/findOne'
+    }
+  },
+
+  mqtt: {
+    broker:   process.env.MQTT_BROKER   || 'mqtt://localhost',
+    port:     parseInt(process.env.MQTT_PORT, 10) || 1883,
+    clientId: process.env.MQTT_CLIENT_ID || `mqtt_client_${Math.random().toString(16).substr(2, 8)}`,
+    topic: {
+      status: 'WAN/FACTORY/PREMIX/TABLET/STATUS',
+      data:   'WAN/FACTORY/PREMIX/TABLET/DATA'
     }
   }
 };
