@@ -1,4 +1,4 @@
-import { Scale } from 'lucide-react';
+import { Moon, Scale, Sun } from 'lucide-react';
 import { useClock } from '@/hooks/useClock';
 import { useMOStore } from '@/store/moStore';
 import { useScaleStore } from '@/store/scaleStore';
@@ -8,11 +8,13 @@ import { LotCounter } from '@/components/dashboard/LotCounter';
 import { cn } from '@/utils/cn';
 
 export function AppHeader() {
-  const clock      = useClock();
-  const activeMO   = useMOStore((s) => s.activeMO);
-  const small      = useScaleStore((s) => s.small);
-  const large      = useScaleStore((s) => s.large);
-  const openModal  = useUIStore((s) => s.openModal);
+  const clock       = useClock();
+  const activeMO    = useMOStore((s) => s.activeMO);
+  const small       = useScaleStore((s) => s.small);
+  const large       = useScaleStore((s) => s.large);
+  const openModal   = useUIStore((s) => s.openModal);
+  const theme       = useUIStore((s) => s.theme);
+  const toggleTheme = useUIStore((s) => s.toggleTheme);
 
   const handleMOClick = () => {
     if (activeMO) {
@@ -21,6 +23,8 @@ export function AppHeader() {
       openModal('moInput');
     }
   };
+
+  const themeLabel = theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
 
   return (
     <header className="app-header h-14 px-6 flex items-center justify-between gap-4 border-b border-b-card bg-bg-surface z-10 shrink-0">
@@ -66,6 +70,21 @@ export function AppHeader() {
           <ConnectionChip label="S1" connected={small.connected} />
           <ConnectionChip label="S2" connected={large.connected} />
         </div>
+
+        <button
+          type="button"
+          onClick={toggleTheme}
+          aria-label={themeLabel}
+          title={themeLabel}
+          className={cn(
+            'inline-flex h-8 w-8 items-center justify-center rounded-pill border border-b-card',
+            'bg-bg-elevated text-t-secondary transition-all duration-200',
+            'hover:border-c-blue hover:bg-c-blue-dim hover:text-c-blue',
+          )}
+        >
+          {theme === 'dark' ? <Sun size={16} strokeWidth={2.4} /> : <Moon size={16} strokeWidth={2.4} />}
+        </button>
+
         <span className="font-mono text-sm font-semibold text-t-secondary tracking-[1.5px] min-w-[68px] text-right">
           {clock}
         </span>

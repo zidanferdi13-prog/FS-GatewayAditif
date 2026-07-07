@@ -6,11 +6,14 @@ interface RMQueueListProps {
   targetWeights: string[];
   /** Highlight the currently active item */
   activeIndex?:  number;
+  layout?:       'vertical' | 'horizontal';
 }
 
-export function RMQueueList({ items, targetWeights, activeIndex }: RMQueueListProps) {
+export function RMQueueList({ items, targetWeights, activeIndex, layout = 'vertical' }: RMQueueListProps) {
+  const isHorizontal = layout === 'horizontal';
+
   return (
-    <div className="flex flex-col gap-2">
+    <div className={cn('flex gap-2', isHorizontal ? 'flex-row overflow-x-auto pb-1' : 'flex-col')}>
       {items.map((name, i) => {
         const target    = parseFloat(targetWeights[i]) || 0;
         const scaleType = getScaleForWeight(target);
@@ -21,6 +24,7 @@ export function RMQueueList({ items, targetWeights, activeIndex }: RMQueueListPr
             key={i}
             className={cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all duration-200',
+              isHorizontal && 'min-w-[240px] flex-1',
               isActive
                 ? 'border-c-blue bg-c-blue-dim'
                 : 'border-b-card bg-bg-elevated',

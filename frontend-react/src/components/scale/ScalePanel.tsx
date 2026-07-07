@@ -17,7 +17,7 @@ interface ScalePanelProps {
 }
 
 const BADGE_LABEL = { small: 'SMALL', large: 'LARGE' } as const;
-const RANGE_LABEL = { small: '≤ 2 kg', large: '> 2 kg' } as const;
+const RANGE_LABEL = { small: '≤ 20 kg', large: '> 20 kg' } as const;
 
 /**
  * Full-featured panel for one physical scale.

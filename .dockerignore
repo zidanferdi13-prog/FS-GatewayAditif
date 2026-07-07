@@ -33,7 +33,7 @@ Thumbs.db
 *.swo
 
 # ── PM2 (not used inside Docker) ─────────────────────────────────────────────
-ecosystem.config.js
+backend/ecosystem.config.js
 
 # ── Misc ──────────────────────────────────────────────────────────────────────
 README.md

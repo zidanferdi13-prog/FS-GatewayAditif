@@ -1,7 +1,7 @@
 import type { ScaleType } from '@/types';
 
 /** Maximum weight (kg) handled by the small scale */
-export const SMALL_SCALE_MAX_KG = 2.0;
+export const SMALL_SCALE_MAX_KG = 20.0;
 
 /** How long (ms) after confirm before advancing to next RM */
 export const AUTO_CONFIRM_DELAY_MS = 1500;

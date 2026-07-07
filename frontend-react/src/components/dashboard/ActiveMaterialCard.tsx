@@ -13,7 +13,7 @@ export function ActiveMaterialCard() {
   if (!moData) return null;
 
   return (
-    <div className="flex flex-col gap-3 p-4 rounded-xl border border-b-card bg-bg-card h-full overflow-hidden">
+    <div className="flex flex-col gap-2 h-full p-3 bg-bg-elevated border border-b-card rounded-lg">
       <div className="flex items-center justify-between">
         <span className="text-xs font-extrabold text-t-muted uppercase tracking-widest">
           Antrian RM
@@ -22,11 +22,12 @@ export function ActiveMaterialCard() {
           {currentIndex + 1} / {moData.produk_rm_items.length}
         </span>
       </div>
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 min-h-0">
         <RMQueueList
           items={moData.produk_rm_items}
           targetWeights={moData.target_weights}
           activeIndex={currentIndex}
+          layout="horizontal"
         />
       </div>
     </div>

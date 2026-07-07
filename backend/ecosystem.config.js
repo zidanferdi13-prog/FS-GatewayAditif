@@ -1,7 +1,7 @@
 module.exports = {
   apps: [{
     name: 'dashboard_timbangan',
-    script: './backend/server.js',
+    script: './server.js',
     instances: 1,
     exec_mode: 'fork',
     watch: false,

@@ -12,8 +12,16 @@ export function DashboardScreen() {
   return (
     <div className="grid h-full gap-3 p-4"
          style={{
-           gridTemplateColumns: hasActiveMO ? '1fr 28px 1fr 260px' : '1fr 28px 1fr',
+           gridTemplateColumns: '1fr 28px 1fr',
+           gridTemplateRows: hasActiveMO ? '112px minmax(0, 1fr)' : '1fr',
          }}>
+
+      {/* RM queue (only when MO is loaded) */}
+      {hasActiveMO && (
+        <div className="col-span-full min-h-0">
+          <ActiveMaterialCard />
+        </div>
+      )}
 
       {/* Small scale panel */}
       <ScalePanel scaleType="small" />
@@ -30,9 +38,6 @@ export function DashboardScreen() {
 
       {/* Large scale panel */}
       <ScalePanel scaleType="large" />
-
-      {/* RM queue (only when MO is loaded) */}
-      {hasActiveMO && <ActiveMaterialCard />}
     </div>
   );
 }
