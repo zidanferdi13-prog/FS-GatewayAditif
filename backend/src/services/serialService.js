@@ -145,11 +145,8 @@ class SerialService {
     }
   }
 
-  // --- Interface sama dengan mqttService ---
-
-  // LED command: MQTT dimatikan, fungsi ini jadi stub
   sendLEDCommand(command) {
-    console.log(`💡 LED command (serial mode — not sent via MQTT): ${command}`);
+    console.log(`💡 LED command: ${command}`);
     return false;
   }
 

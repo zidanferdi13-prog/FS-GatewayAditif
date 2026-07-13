@@ -1,4 +1,5 @@
-import { Moon, Scale, Sun } from 'lucide-react';
+import { Moon, Scale, Sun, FileText } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useClock } from '@/hooks/useClock';
 import { useMOStore } from '@/store/moStore';
 import { useScaleStore } from '@/store/scaleStore';
@@ -9,12 +10,16 @@ import { cn } from '@/utils/cn';
 
 export function AppHeader() {
   const clock       = useClock();
+  const location    = useLocation();
+  const navigate    = useNavigate();
   const activeMO    = useMOStore((s) => s.activeMO);
   const small       = useScaleStore((s) => s.small);
   const large       = useScaleStore((s) => s.large);
   const openModal   = useUIStore((s) => s.openModal);
   const theme       = useUIStore((s) => s.theme);
   const toggleTheme = useUIStore((s) => s.toggleTheme);
+
+  const isLaporan = location.pathname === '/laporan';
 
   const handleMOClick = () => {
     if (activeMO) {
@@ -44,8 +49,24 @@ export function AppHeader() {
         </div>
       </div>
 
-      {/* ── Centre: MO Button + Lot Counter ───────────────────────────────── */}
-      <div className="flex items-center justify-center gap-3 flex-1">
+      {/* ── Centre: Nav + MO Button + Lot Counter ───────────────────────────── */}
+      <div className="flex items-center justify-center gap-2 flex-1">
+        {/* Laporan nav link */}
+        <button
+          onClick={() => navigate('/laporan')}
+          className={cn(
+            'inline-flex items-center gap-1 px-3 py-1.5 rounded-pill border-[1.5px]',
+            'font-ui text-[12px] font-bold tracking-[0.4px] cursor-pointer',
+            'transition-all duration-200 whitespace-nowrap',
+            isLaporan
+              ? 'text-c-blue border-c-blue bg-c-blue-dim'
+              : 'text-t-secondary border-b-card bg-bg-elevated hover:border-c-blue hover:text-c-blue',
+          )}
+        >
+          <FileText size={14} />
+          Laporan
+        </button>
+
         <button
           onClick={handleMOClick}
           className={cn(

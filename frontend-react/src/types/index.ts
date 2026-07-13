@@ -9,6 +9,7 @@ export type ScaleType = 'small' | 'large';
 
 /** Raw data returned by the backend when a MO is fetched */
 export interface MOData {
+  mo_id:           string;
   nomor_mo:        string;
   qty_plan:        number;
   total_rm:        number;

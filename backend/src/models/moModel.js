@@ -3,6 +3,7 @@
  * Handles database operations for MO, RM details, and weight records
  */
 
+const crypto = require('crypto');
 const db = require('../config/database');
 
 class MOModel {
@@ -13,19 +14,20 @@ class MOModel {
    */
   static async create(data) {
     const query = `
-      INSERT INTO tbl_m_manufacturing_orders 
-      (t_mo_id, work_center, nomor_mo, nama_produk, schedule_mo, qty_plan, lot, total_rm, created_at) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      INSERT INTO tbl_m_manufacturing_orders
+      (id, t_mo_id, work_center, nomor_mo, nama_produk, schedule_mo, qty_plan, lot, total_rm, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
     `;
     try {
       const [result] = await db.execute(query, [
+        data.id || crypto.randomUUID(),
         data.t_mo_id,
         data.work_center,
-        data.nomor_mo, 
+        data.nomor_mo,
         data.nama_produk,
         data.schedule_mo,
-        data.qty_plan, 
-        data.lot, 
+        data.qty_plan,
+        data.lot,
         data.total_rm
       ]);
       return result;
@@ -41,17 +43,18 @@ class MOModel {
    * @param {Object} data - RM data {item, qty, target_weight}
    * @returns {Promise} Insert result
    */
-  static async createRMDetail(moId, data) {
+  static async createRMDetail(id, data) {
     const query = `
-      INSERT INTO tbl_mo_rm_details 
-      (mo_id, item, qty, target_weight, created_at) 
-      VALUES (?, ?, ?, ?, NOW())
+      INSERT INTO tbl_mo_rm_details
+      (id, mo_id, item, qty, target_weight, created_at)
+      VALUES (?, ?, ?, ?, ?, NOW())
     `;
     try {
       const [result] = await db.execute(query, [
-        data.nomor_mo, 
-        data.item, 
-        data.qty, 
+        id || crypto.randomUUID(),
+        data.mo_id,
+        data.item,
+        data.qty,
         data.target_weight
       ]);
       return result;
@@ -68,15 +71,15 @@ class MOModel {
    */
   static async createWeightRecord(data) {
     const query = `
-      INSERT INTO tbl_weight_records 
-      (mo_id, rm_item, actual_weight, timestamp) 
+      INSERT INTO tbl_weight_records
+      (id, rm_detail_id, actual_weight, timestamp)
       VALUES (?, ?, ?, ?)
     `;
     try {
       const [result] = await db.execute(query, [
-        data.nomor_mo, 
-        data.rm_item, 
-        data.actual_weight, 
+        data.id || crypto.randomUUID(),
+        data.rm_detail_id,
+        data.actual_weight,
         data.timestamp
       ]);
       return result;
@@ -93,9 +96,10 @@ class MOModel {
    */
   static async getByNomorMO(nomorMO) {
     const query = `
-      SELECT mo.*, 
+      SELECT mo.*,
              JSON_ARRAYAGG(
                JSON_OBJECT(
+                 'id', rm.id,
                  'item', rm.item,
                  'qty', rm.qty,
                  'target_weight', rm.target_weight
@@ -108,7 +112,13 @@ class MOModel {
     `;
     try {
       const [rows] = await db.execute(query, [nomorMO]);
-      return rows[0] || null;
+      if (!rows[0]) return null;
+      // mysql2 returns JSON columns as strings — parse and clean nulls from LEFT JOIN
+      if (typeof rows[0].rm_details === 'string') {
+        const parsed = JSON.parse(rows[0].rm_details);
+        rows[0].rm_details = Array.isArray(parsed) ? parsed.filter(d => d.id !== null) : [];
+      }
+      return rows[0];
     } catch (error) {
       console.error('❌ Error getting MO:', error.message);
       throw error;
@@ -116,15 +126,61 @@ class MOModel {
   }
 
   /**
-   * Get weight records for specific MO
-   * @param {Number} moId - MO ID
+   * List all MOs ordered by newest first
+   * @returns {Promise<Array>}
+   */
+  static async getAll() {
+    const query = `
+      SELECT id, nomor_mo, nama_produk, qty_plan, total_rm, status,
+             lot, work_center, schedule_mo, created_at, last_updated_at
+      FROM tbl_m_manufacturing_orders
+      ORDER BY created_at DESC
+      LIMIT 200
+    `;
+    try {
+      const [rows] = await db.execute(query);
+      return rows;
+    } catch (error) {
+      console.error('❌ Error listing MOs:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get weight records for each RM detail of a given MO
+   * @param {String} moId - MO UUID
+   * @returns {Promise<Array>} Weight records with rm_detail_id
+   */
+  static async getWeightRecordsForMO(moId) {
+    const query = `
+      SELECT wr.id, wr.rm_detail_id, wr.actual_weight, wr.timestamp
+      FROM tbl_weight_records wr
+      JOIN tbl_mo_rm_details rm ON wr.rm_detail_id = rm.id
+      WHERE rm.mo_id = ?
+      ORDER BY wr.timestamp DESC
+    `;
+    try {
+      const [rows] = await db.execute(query, [moId]);
+      return rows;
+    } catch (error) {
+      console.error('❌ Error getting weight records for MO:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get weight records for specific MO via FK chain
+   * tbl_m_manufacturing_orders → tbl_mo_rm_details → tbl_weight_records
+   * @param {String} moId - MO UUID
    * @returns {Promise} Array of weight records
    */
   static async getWeightRecords(moId) {
     const query = `
-      SELECT * FROM tbl_weight_records 
-      WHERE mo_id = ? 
-      ORDER BY timestamp DESC
+      SELECT wr.*
+      FROM tbl_weight_records wr
+      JOIN tbl_mo_rm_details rm ON wr.rm_detail_id = rm.id
+      WHERE rm.mo_id = ?
+      ORDER BY wr.timestamp DESC
     `;
     try {
       const [rows] = await db.execute(query, [moId]);

@@ -1,7 +1,5 @@
 'use strict';
 
-const { default: mqtt } = require('mqtt');
-
 require('dotenv').config();
 
 module.exports = {
@@ -29,7 +27,7 @@ module.exports = {
     host:            process.env.DB_HOST            || 'localhost',
     user:            process.env.DB_USER            || 'root',
     password:        process.env.DB_PASSWORD        || '',
-    name:            process.env.DB_NAME            || 'amanerve_loadcell',
+    name:            process.env.DB_NAME            || 'db_ama_premix',
     connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT, 10) || 10
   },
 
@@ -38,16 +36,5 @@ module.exports = {
       baseUrl:         process.env.KANBAN_API_URL   || 'https://services.ama.id/kanban',
       findOneEndpoint: '/findOne'
     }
-  },
-
-  mqtt: {
-    broker:   process.env.MQTT_BROKER   || 'mqtt://localhost',
-    port:     parseInt(process.env.MQTT_PORT, 10) || 1883,
-    clientId: process.env.MQTT_CLIENT_ID || `mqtt_client_${Math.random().toString(16).substr(2, 8)}`,
-    topic: {
-      status: 'WAN/FACTORY/PREMIX/TABLET/STATUS',
-      data:   'WAN/FACTORY/PREMIX/TABLET/DATA'
-    }
   }
 };
-

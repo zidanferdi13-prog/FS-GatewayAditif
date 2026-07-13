@@ -44,7 +44,7 @@ export const useUIStore = create<UIStoreState>()(
     (set, get) => ({
       openModals:     new Set<ModalId>(),
       toasts:         [],
-      theme:          'dark',
+      theme:          'light',
       overloadWeight: 0,
       overloadTarget: 0,
       completedLot:   0,

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//d/Project AmaNerve/WAN_FACTORY_PREMIX/FS-Dashboard Aditif Premix/backend/**)",
+      "Read(//d/Project AmaNerve/WAN_FACTORY_PREMIX/FS-Dashboard Aditif Premix/backend/src/services/**)"
+    ]
+  }
+}

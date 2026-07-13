@@ -1,5 +1,5 @@
-import { useRef, useEffect } from 'react';
-import { ClipboardList } from 'lucide-react';
+import { useRef, useEffect, useState } from 'react';
+import { ClipboardList, Loader2 } from 'lucide-react';
 import { ModalOverlay } from '@/components/modal/ModalOverlay';
 import { useMOStore } from '@/store/moStore';
 import { useUIStore } from '@/store/uiStore';
@@ -12,30 +12,52 @@ export function MOInputModal() {
   const closeModal = useUIStore((s) => s.closeModal);
   const setActiveMO = useMOStore((s) => s.setActiveMO);
   const setWeightAboveZero = useMOStore((s) => s.setWeightAboveZero);
+  const [loading, setLoading] = useState(false);
 
-  // Auto-focus on open
+  // Auto-focus on open, reset loading
   useEffect(() => {
-    if (isOpen) setTimeout(() => inputRef.current?.focus(), 60);
+    if (isOpen) {
+      setLoading(false);
+      setTimeout(() => inputRef.current?.focus(), 60);
+    }
   }, [isOpen]);
+
+  // Listen for mo-data-confirm to clear loading + close on success
+  useEffect(() => {
+    const socket = socketService.socket;
+    if (!socket) return;
+
+    const handler = (response: { success: boolean }) => {
+      setLoading(false);
+      if (response.success) {
+        closeModal('moInput');
+        if (inputRef.current) inputRef.current.value = '';
+      }
+      // On error — keep modal open so user can retry
+    };
+
+    socket.on('mo-data-confirm', handler);
+    return () => { socket.off('mo-data-confirm', handler); };
+  }, [closeModal]);
 
   const handleSubmit = () => {
     const value = inputRef.current?.value.trim() ?? '';
-    if (!value) return;
+    if (!value || loading) return;
 
     // Update display in header immediately
     setActiveMO(value);
+    setLoading(true);
 
     // Emit to server — server will respond with mo-data-confirm
     socketService.emit('mo-confirmed', {
       mo:        value,
       timestamp: new Date().toISOString(),
     });
-
-    closeModal('moInput');
-    if (inputRef.current) inputRef.current.value = '';
+    // Modal stays open until response arrives
   };
 
   const handleCancel = () => {
+    if (loading) return; // Prevent cancel while loading
     closeModal('moInput');
     if (inputRef.current) inputRef.current.value = '';
     setWeightAboveZero(false);
@@ -64,11 +86,13 @@ export function MOInputModal() {
             placeholder="Contoh: WAN/MO/26/1234"
             maxLength={50}
             autoComplete="off"
+            disabled={loading}
             onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             className="w-full px-4 py-2.5 rounded-lg bg-bg-elevated border border-b-card text-t-primary
                        placeholder-t-muted font-mono text-sm
                        focus:outline-none focus:border-c-blue focus:ring-1 focus:ring-c-blue
-                       transition-colors duration-150"
+                       transition-colors duration-150
+                       disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>
 
@@ -76,17 +100,22 @@ export function MOInputModal() {
         <div className="px-6 pb-6 flex gap-3 justify-end">
           <button
             onClick={handleCancel}
+            disabled={loading}
             className="px-5 py-2 rounded-lg border border-b-card text-t-secondary text-sm font-medium
-                       hover:bg-bg-elevated transition-colors duration-150"
+                       hover:bg-bg-elevated transition-colors duration-150
+                       disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Batal
           </button>
           <button
             onClick={handleSubmit}
+            disabled={loading}
             className="px-6 py-2 rounded-lg bg-c-blue text-white text-sm font-semibold
-                       hover:bg-c-blue-bright hover:shadow-glow-blue transition-all duration-150"
+                       hover:bg-c-blue-bright hover:shadow-glow-blue transition-all duration-150
+                       disabled:opacity-60 disabled:cursor-wait inline-flex items-center gap-2"
           >
-            Mulai
+            {loading && <Loader2 size={16} className="animate-spin" />}
+            {loading ? 'Memuat…' : 'Mulai'}
           </button>
         </div>
       </div>

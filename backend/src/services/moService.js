@@ -10,6 +10,7 @@
  *   - Mark MO as completed
  */
 
+const crypto = require('crypto');
 const MOModel   = require('../models/moModel');
 const { sendData, fetchData } = require('./apiService');
 const config    = require('../config/config');
@@ -71,19 +72,20 @@ async function fetchAndProcessMO(nomor_mo) {
   console.log(`📦 MO ${moNumber} — ${produkRMItems.length} RM, ${qty_plan} lot(s)`);
 
   /* — Persist to DB (best-effort, non-blocking) — */
-  let moId = t_mo_id;
+  const moUUID  = crypto.randomUUID();
+  const rmIDs   = produkRMItems.map(() => crypto.randomUUID());
   try {
     await MOModel.create({
-      t_mo_id, work_center, nomor_mo: moNumber, nama_produk,
+      id: moUUID, t_mo_id, work_center, nomor_mo: moNumber, nama_produk,
       schedule_mo, qty_plan, lot: lot || 0, total_rm: produkRMItems.length
     });
     console.log(`✅ MO ${moNumber} saved to DB`);
 
     for (let i = 0; i < produkRMItems.length; i++) {
-      await MOModel.createRMDetail(moId, {
-        nomor_mo: moNumber,
-        item:     produkRMItems[i],
-        qty:      produkRMQty[i],
+      await MOModel.createRMDetail(rmIDs[i], {
+        mo_id: moUUID,
+        item:  produkRMItems[i],
+        qty:   produkRMQty[i],
         target_weight: targetWeights[i]
       });
     }
@@ -93,13 +95,8 @@ async function fetchAndProcessMO(nomor_mo) {
     // Continue — DB failure must not block the weighing session
   }
 
-  /* — Notify external API — */
-  sendData('/mo/confirmed', { item: item.data }).catch(e =>
-    console.error('❌ Failed to notify /mo/confirmed:', e.message)
-  );
-
   return {
-    mo_id:           moId,
+    mo_id:           moUUID,
     nomor_mo:        moNumber,
     qty_plan,
     lot:             lot || 0,
@@ -140,4 +137,76 @@ async function completeMO(data) {
   );
 }
 
-module.exports = { fetchAndProcessMO, recordPrintConfirm, completeMO };
+/* ── MO listing ──────────────────────────────────────────── */
+
+/**
+ * List all MOs from the database (newest first)
+ * @returns {Promise<Array>}
+ */
+async function listMOs() {
+  return await MOModel.getAll();
+}
+
+/* ── MO detail ──────────────────────────────────────────── */
+
+/**
+ * Get full MO detail including RM items + weight records
+ * @param {string} nomor_mo
+ * @returns {Promise<object|null>}
+ */
+async function getMODetail(nomor_mo) {
+  const mo = await MOModel.getByNomorMO(nomor_mo);
+  if (!mo) return null;
+
+  // Fetch weight records for this MO
+  const weightRecords = await MOModel.getWeightRecordsForMO(mo.id);
+
+  // Group weight records by rm_detail_id
+  const rmWeightMap = {};
+  for (const wr of weightRecords) {
+    if (!rmWeightMap[wr.rm_detail_id]) rmWeightMap[wr.rm_detail_id] = [];
+    rmWeightMap[wr.rm_detail_id].push({
+      id:            wr.id,
+      actual_weight: parseFloat(wr.actual_weight),
+      timestamp:     wr.timestamp,
+    });
+  }
+
+  // Attach weight history to each RM detail
+  const rmDetails = (mo.rm_details || []).map(rm => ({
+    ...rm,
+    qty:           parseFloat(rm.qty),
+    target_weight: parseFloat(rm.target_weight),
+    weights:       rmWeightMap[rm.id] || [],
+  }));
+
+  return {
+    id:            mo.id,
+    t_mo_id:       mo.t_mo_id,
+    work_center:   mo.work_center,
+    nomor_mo:      mo.nomor_mo,
+    nama_produk:   mo.nama_produk,
+    schedule_mo:   mo.schedule_mo,
+    qty_plan:      mo.qty_plan,
+    lot:           mo.lot,
+    total_rm:      mo.total_rm,
+    status:        mo.status,
+    created_at:    mo.created_at,
+    rm_details:    rmDetails,
+  };
+}
+
+/* ── Reprint ────────────────────────────────────────────── */
+
+/**
+ * Re-trigger print for a specific RM weight record.
+ * Re-emits the print-confirm data that was originally sent.
+ * @param {object} data - { mo, lot, rm_index, rm_name, scale_used, weight, target }
+ * @returns {Promise<void>}
+ */
+async function reprintRM(data) {
+  await sendData('/mo/print', { data, reprint: true });
+  console.log(`🔄 Reprint sent: MO=${data.mo} lot=${data.lot} RM=${data.rm_index}`);
+}
+
+module.exports = { fetchAndProcessMO, recordPrintConfirm, completeMO, listMOs, getMODetail, reprintRM };

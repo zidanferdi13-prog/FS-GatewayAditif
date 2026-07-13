@@ -12,17 +12,14 @@ const createApp = require('./src/app');
 
 const SerialService = require('./src/services/serialService');
 const moService     = require('./src/services/moService');
-const mqttService   = require('./src/services/mqttService');
-
 const WeightController = require('./src/controllers/weightController');
+const MOController = require('./src/controllers/moController');
 
 /* ════════════════════════════════════════════════════════════
    SERIAL CLIENTS
 ════════════════════════════════════════════════════════════ */
 const serialSmall = new SerialService(null, 'small', config.scales.small);
 const serialLarge = new SerialService(null, 'large', config.scales.large);
-
-const mqttClient = new mqttService();
 
 
 /** Combined adapter — presents a single interface to controllers */
@@ -75,8 +72,9 @@ const serialClient = {
    EXPRESS + HTTP SERVER
 ════════════════════════════════════════════════════════════ */
 const weightController = new WeightController(serialClient);
+const moController     = new MOController();
 
-const app    = createApp({ weightController });
+const app    = createApp({ weightController, moController });
 const server = http.createServer(app);
 
 /* ════════════════════════════════════════════════════════════
