@@ -75,13 +75,46 @@ const serialClient = {
 
 /* ── Printer ──────────────────────────────────────────── */
 const printerService = new PrinterService(config.printer);
-printerService.connect();
 
 const weightController = new WeightController(serialClient);
 const moController     = new MOController(printerService);
 
 const app    = createApp({ weightController, moController });
 const server = http.createServer(app);
+
+/* ════════════════════════════════════════════════════════════
+   BOOT — async init (printer needs registry scan)
+════════════════════════════════════════════════════════════ */
+(async () => {
+  /* ── Connect printer (resolves USB device path) ─── */
+  try {
+    await printerService.connect();
+  } catch (err) {
+    console.error(`⚠️  Printer init skipped: ${err.message}`);
+  }
+
+  /* Serial connect */
+  serialSmall.connect();
+  serialLarge.connect();
+
+  /* HTTP LISTEN */
+  server.listen(config.server.port, '0.0.0.0', () => {
+    console.log('╔════════════════════════════════════════╗');
+    console.log('║    AMA Timbangan Aditif  v2  — Ready   ║');
+    console.log('╚════════════════════════════════════════╝');
+    console.log(`🚀  http://0.0.0.0:${config.server.port}`);
+    console.log(`📡  Small: ${config.scales.small.port} @ ${config.scales.small.baudRate} bps`);
+    console.log(`📡  Large: ${config.scales.large.port} @ ${config.scales.large.baudRate} bps`);
+    console.log(`🖨️  Printer: ${config.printer.name || '(none)'}`);
+  });
+})();
+
+/* Optional: log overload to server console */
+serialClient.onWeightData(data => {
+  if (data.weight >= config.loadcell.overload_threshold) {
+    console.warn(`⚠️  OVERLOAD [${data.scale}]: ${data.weight} kg`);
+  }
+});
 
 /* ════════════════════════════════════════════════════════════
    SOCKET.IO
@@ -199,32 +232,6 @@ io.on('connection', socket => {
       console.error('❌ completeMO failed:', err.message)
     );
   });
-});
-
-/* ════════════════════════════════════════════════════════════
-   SERIAL — START
-════════════════════════════════════════════════════════════ */
-serialSmall.connect();
-serialLarge.connect();
-
-/* Optional: log overload to server console */
-serialClient.onWeightData(data => {
-  if (data.weight >= config.loadcell.overload_threshold) {
-    console.warn(`⚠️  OVERLOAD [${data.scale}]: ${data.weight} kg`);
-  }
-});
-
-/* ════════════════════════════════════════════════════════════
-   HTTP LISTEN
-════════════════════════════════════════════════════════════ */
-server.listen(config.server.port, '0.0.0.0', () => {
-  console.log('╔════════════════════════════════════════╗');
-  console.log('║    AMA Timbangan Aditif  v2  — Ready   ║');
-  console.log('╚════════════════════════════════════════╝');
-  console.log(`🚀  http://0.0.0.0:${config.server.port}`);
-  console.log(`📡  Small: ${config.scales.small.port} @ ${config.scales.small.baudRate} bps`);
-  console.log(`📡  Large: ${config.scales.large.port} @ ${config.scales.large.baudRate} bps`);
-  console.log(`🖨️  Printer: ${config.printer.name || '(none)'}`);
 });
 
 /* ════════════════════════════════════════════════════════════

@@ -39,7 +39,7 @@ module.exports = {
   },
 
   printer: {
-    name:    process.env.PRINTER_NAME || 'XPrinter XP-420B',
+    name:    process.env.PRINTER_NAME      || 'Xprinter XP-420B',
     timeout: parseInt(process.env.PRINTER_TIMEOUT, 10) || 30000
   }
 };

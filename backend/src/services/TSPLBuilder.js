@@ -51,7 +51,7 @@ class TSPLBuilder {
    * @returns {string}
    */
   static _escape(text) {
-    if (typeof text !== 'string') return '';
+    if (typeof text !== 'string') text = String(text);
     return text
       .replace(/\\/g, '\\\\')
       .replace(/"/g, '\\"')
@@ -120,30 +120,35 @@ class TSPLBuilder {
    *   nama_produk: 'PREMIX MORTAR ACIAN PUTIH 40KG'
    * });
    */
+  /**
+   * Build TSPL bar label — minimal, dua kolom.
+   *
+   * 76×100mm @ 203 DPI:
+   *
+   *   BAR LABEL              (Font 5)
+   *   ───────── separator    (barcode kecil)
+   *   Nomor DO  │  Nomor Lot   (Font 3)
+   *   WAN/XXXXX │  2026XXXXX   (Font 2)
+   *   █████████████████████  (Barcode Code128, penuh)
+   *         2026XXXXX         (Font 3, di bawah barcode)
+   *
+   * @param {object} data
+   * @param {string}   data.mo   - Nomor DO/MO
+   * @param {string|number} data.lot - Nomor Lot
+   * @returns {string} TSPL command string
+   */
   static buildLotLabel(data) {
     if (!data) throw new Error('TSPLBuilder: data is required');
     if (!data.mo)   throw new Error('TSPLBuilder: mo is required');
-    if (!data.lot)  throw new Error('TSPLBuilder: lot is required');
+    if (data.lot === undefined || data.lot === null || data.lot === '')  throw new Error('TSPLBuilder: lot is required');
 
     const mo  = TSPLBuilder._escape(data.mo);
     const lot = TSPLBuilder._escape(data.lot);
-    const produkLines = TSPLBuilder._wrapText(data.nama_produk || '');
 
-    const MX = TSPLBuilder.MARGIN_X;  // 40
-    const W  = TSPLBuilder._dot(TSPLBuilder.LABEL_WIDTH_MM);   // 599
-    const H  = TSPLBuilder._dot(TSPLBuilder.LABEL_HEIGHT_MM);  // 787
-    const G  = TSPLBuilder._dot(TSPLBuilder.GAP_MM);           // 24
-
-    const Y_TITLE     = 30;
-    const Y_LINE      = 85;
-    const Y_MO_LABEL  = 145;
-    const Y_MO_VAL    = 170;
-    const Y_LOT_LABEL = 220;
-    const Y_LOT_VAL   = 245;
-    const Y_PRD_LABEL = 295;
-    const Y_PRD_VALS  = [320, 342, 364];
-    const Y_BARCODE   = 400;
-    const Y_QRCODE    = 520;
+    const W = TSPLBuilder._dot(76);   // 599 dot
+    const H = TSPLBuilder._dot(100);  // 787 dot
+    const G = TSPLBuilder._dot(3);    // 24 dot
+    const MX = 40;
 
     const lines = [];
 
@@ -154,43 +159,33 @@ class TSPLBuilder {
     lines.push(`CLS`);
     lines.push('');
 
-    // ── Title — centered ──
-    lines.push(`TEXT ${MX},${Y_TITLE},"5",0,1,1,"LOT LABEL"`);
+    // ── Title ──
+    lines.push(`TEXT ${MX},30,"5",0,1,1,"BAR LABEL"`);
     lines.push('');
 
-    // ── Separator line ──
-    lines.push(`BARCODE ${MX},${Y_LINE},"128",40,0,0,2,2,"${lot}"`);
+    // ── Separator — barcode tipis ──
+    lines.push(`BARCODE ${MX},80,"128",30,0,0,2,2,"${lot}"`);
     lines.push('');
 
-    // ── MO ──
-    lines.push(`TEXT ${MX},${Y_MO_LABEL},"3",0,1,1,"MO"`);
-    lines.push(`TEXT ${MX},${Y_MO_VAL},"2",0,1,1,"${mo}"`);
+    // ── Column headers ──
+    lines.push(`TEXT ${MX},130,"3",0,1,1,"Nomor DO"`);
+    lines.push(`TEXT 310,130,"3",0,1,1,"Nomor Lot"`);
     lines.push('');
 
-    // ── LOT ──
-    lines.push(`TEXT ${MX},${Y_LOT_LABEL},"3",0,1,1,"LOT"`);
-    lines.push(`TEXT ${MX},${Y_LOT_VAL},"2",0,1,1,"${lot}"`);
+    // ── Column values ──
+    lines.push(`TEXT ${MX},160,"2",0,1,1,"${mo}"`);
+    lines.push(`TEXT 310,160,"2",0,1,1,"${lot}"`);
     lines.push('');
 
-    // ── PRODUCT ──
-    lines.push(`TEXT ${MX},${Y_PRD_LABEL},"3",0,1,1,"PRODUCT"`);
-    for (let i = 0; i < TSPLBuilder.MAX_WRAP_LINES; i++) {
-      if (produkLines[i]) {
-        lines.push(`TEXT ${MX},${Y_PRD_VALS[i]},"2",0,1,1,"${produkLines[i]}"`);
-      }
-    }
+    // ── Main barcode (full-width) ──
+    lines.push(`BARCODE ${MX},250,"128",80,1,0,2,2,"${lot}"`);
     lines.push('');
 
-    // ── Barcode (Code128, full width) ──
-    lines.push(`BARCODE ${MX},${Y_BARCODE},"128",60,1,0,2,2,"${lot}"`);
+    // ── Lot text di bawah barcode ──
+    lines.push(`TEXT ${MX},370,"3",0,1,1,"${lot}"`);
     lines.push('');
 
-    // ── QR Code (right side) ──
-    const QR_X = 360;  // ≈45mm
-    lines.push(`QRCODE ${QR_X},${Y_QRCODE},M,6,A,0,"${lot}"`);
-    lines.push('');
-
-    // ── Print command ──
+    // ── Print ──
     lines.push(`PRINT 1,1`);
 
     return lines.join('\r\n');
