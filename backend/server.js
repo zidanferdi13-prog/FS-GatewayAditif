@@ -224,6 +224,7 @@ server.listen(config.server.port, '0.0.0.0', () => {
   console.log(`🚀  http://0.0.0.0:${config.server.port}`);
   console.log(`📡  Small: ${config.scales.small.port} @ ${config.scales.small.baudRate} bps`);
   console.log(`📡  Large: ${config.scales.large.port} @ ${config.scales.large.baudRate} bps`);
+  console.log(`🖨️  Printer: ${config.printer.name || '(none)'}`);
 });
 
 /* ════════════════════════════════════════════════════════════
