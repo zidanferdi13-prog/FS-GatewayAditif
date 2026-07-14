@@ -154,6 +154,8 @@ class TSPLBuilder {
 
     // ── Header ──
     lines.push(`SIZE ${W} dot,${H} dot`);
+    lines.push(`SPEED 4`);
+    lines.push(`DENSITY 8`);
     lines.push(`GAP ${G} dot,0`);
     lines.push(`DIRECTION 1`);
     lines.push(`CLS`);

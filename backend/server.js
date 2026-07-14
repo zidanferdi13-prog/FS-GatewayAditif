@@ -83,17 +83,10 @@ const app    = createApp({ weightController, moController });
 const server = http.createServer(app);
 
 /* ════════════════════════════════════════════════════════════
-   BOOT — async init (printer needs registry scan)
+   BOOT
 ════════════════════════════════════════════════════════════ */
 (async () => {
-  /* ── Connect printer (resolves USB device path) ─── */
-  try {
-    await printerService.connect();
-  } catch (err) {
-    console.error(`⚠️  Printer init skipped: ${err.message}`);
-  }
-
-  /* Serial connect */
+  /* ── Serial connect ─── */
   serialSmall.connect();
   serialLarge.connect();
 
@@ -202,7 +195,8 @@ io.on('connection', socket => {
   /* ── print-lot ────────────────────────────────────── */
   socket.on('print-lot', async data => {
     if (!data || !isValidMOString(data.mo) || typeof data.lot !== 'number') {
-      return console.warn('⚠️  print-lot: invalid payload ignored');
+      socket.emit('print-lot-data', { success: false, error: 'Invalid payload: mo (string) and lot (number) required' });
+      return;
     }
 
     console.log(`🖨️🖨️  Print lot — MO=${data.mo} lot=${data.lot}`);
@@ -213,7 +207,8 @@ io.on('connection', socket => {
       console.log(`✅ Print lot data sent: MO=${data.mo} lot=${data.lot} (${printData.items.length} items)`);
 
       // Also send to local printer
-      await printerService.printLot(printData);
+      const result = await printerService.printLot(printData);
+      console.log(`✅ Print sent to local printer (${result.method}): MO=${data.mo} lot=${data.lot}`);
     } catch (err) {
       console.error('❌ print-lot failed:', err.message);
       socket.emit('print-lot-data', { success: false, error: err.message });

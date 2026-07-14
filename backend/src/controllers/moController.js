@@ -58,14 +58,10 @@ class MOController {
       }
       const result = await moService.reprintLot(mo, lot);
 
-      // Also print full lot label to local printer
+      // Also print full lot label to local printer — propagate error to API
       if (this.printerService) {
-        try {
-          const printData = await moService.getLotPrintData(mo, lot);
-          await this.printerService.printLot(printData);
-        } catch (prnErr) {
-          console.error(`❌ Reprint local print failed: ${prnErr.message}`);
-        }
+        const printData = await moService.getLotPrintData(mo, lot);
+        await this.printerService.printLot(printData);
       }
 
       res.json({ success: true, data: result, message: `Print ulang lot ${lot} — ${result.count} RM dikirim` });
