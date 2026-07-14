@@ -39,9 +39,7 @@ module.exports = {
   },
 
   printer: {
-    mode:     process.env.PRINTER_MODE || 'serial',
-    name:     process.env.PRINTER_NAME || '',
-    port:     process.env.PRINTER_PORT || process.env.SERIAL_PRINTER_PORT || 'COM3',
-    baudRate: parseInt(process.env.PRINTER_BAUD_RATE || '9600', 10)
+    name:    process.env.PRINTER_NAME || 'XPrinter XP-420B',
+    timeout: parseInt(process.env.PRINTER_TIMEOUT, 10) || 30000
   }
 };
