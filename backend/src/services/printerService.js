@@ -1,17 +1,22 @@
 'use strict';
 
 /**
- * Printer Serial Service
- * Handles local USB/Serial thermal printer for lot labels.
- * Output format: QR code content + lot info + RM items.
- * Protocol: plain text / ESC/POS (adjust per printer).
+ * Printer Service
+ * Handles printing lot labels via Serial (COM) or Windows printer.
+ *
+ * Serial mode: raw text via SerialPort.
+ * Windows mode: plain text via PowerShell Out-Printer (no native modules).
  */
 
 const { SerialPort } = require('serialport');
+const { execFile } = require('child_process');
+const path = require('path');
+const fs = require('fs');
+const os = require('os');
 
 class PrinterService {
-  constructor(serialConfig = null) {
-    this.serialConfig = serialConfig;
+  constructor(config = null) {
+    this.config = config;
     this.port = null;
     this.connected = false;
     this._writeQueue = [];
@@ -19,11 +24,39 @@ class PrinterService {
   }
 
   /**
-   * Open serial connection to printer.
-   * @param {object} config - { port, baudRate }
+   * Open connection to printer.
+   * @param {object} cfg - { mode, name, port, baudRate }
    */
   connect(config = null) {
-    const cfg = config || this.serialConfig;
+    const cfg = config || this.config;
+    if (!cfg) {
+      console.warn('⚠️  Printer: no config — prints will be logged only');
+      return;
+    }
+
+    if (cfg.mode === 'windows') {
+      this._connectWindows(cfg);
+    } else {
+      this._connectSerial(cfg);
+    }
+  }
+
+  /* ───── Windows printer (PowerShell Out-Printer) ───── */
+
+  _connectWindows(cfg) {
+    if (!cfg.name) {
+      console.warn('⚠️  Printer: PRINTER_NAME empty — prints will be logged only');
+      return;
+    }
+
+    console.log(`🖨️  Printer: Windows mode — "${cfg.name}"`);
+    this.connected = true;
+    console.log(`✅ Printer: ready — "${cfg.name}"`);
+  }
+
+  /* ───── Serial printer (SerialPort) ───── */
+
+  _connectSerial(cfg) {
     if (!cfg || !cfg.port) {
       console.warn('⚠️  Printer: no serial port configured — prints will be logged only');
       return;
@@ -32,7 +65,7 @@ class PrinterService {
     const portPath = cfg.port;
     const baudRate = cfg.baudRate || 9600;
 
-    console.log(`🖨️  Printer: opening ${portPath} @ ${baudRate} bps`);
+    console.log(`🖨️  Printer: serial — ${portPath} @ ${baudRate} bps`);
 
     try {
       this.port = new SerialPort({
@@ -49,7 +82,6 @@ class PrinterService {
         }
         console.log(`✅ Printer: connected on ${portPath}`);
         this.connected = true;
-        // Flush any queued writes
         this._processQueue();
       });
 
@@ -67,45 +99,93 @@ class PrinterService {
     }
   }
 
+  /* ───── Print lot label ───── */
+
   /**
    * Print a lot label.
    * @param {object} lotData - from getLotPrintData()
    *  { mo, lot, nama_produk, items: [{ rm_name, target_weight, actual_weight }] }
    */
-  printLot(lotData) {
+  async printLot(lotData) {
     const text = this._formatLotLabel(lotData);
-    this._write(text);
+
+    if (this.config?.mode === 'windows') {
+      await this._printWindows(text);
+    } else {
+      this._write(text);
+    }
   }
 
   /**
+   * Send formatted text to Windows printer via PowerShell Out-Printer.
+   */
+  async _printWindows(text) {
+    if (!this.config?.name) {
+      console.log('🖨️  Printer: no printer name — logged only');
+      return;
+    }
+
+    const tmpFile = path.join(os.tmpdir(), `prn_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.txt`);
+
+    try {
+      // Write with UTF-16LE (PowerShell default) to preserve special chars
+      fs.writeFileSync(tmpFile, text, 'ucs2');
+    } catch (err) {
+      console.error(`❌ Printer: temp file error: ${err.message}`);
+      return;
+    }
+
+    try {
+      await new Promise((resolve, reject) => {
+        const ps = `Get-Content -Encoding Unicode "${tmpFile}" | Out-Printer -Name "${this.config.name}"`;
+        execFile('powershell', ['-NoProfile', '-NonInteractive', '-Command', ps], (err, stdout, stderr) => {
+          // Clean up temp file
+          try { fs.unlinkSync(tmpFile); } catch (_) {}
+
+          if (err) {
+            console.error(`❌ Printer: PowerShell error: ${err.message}`);
+            if (stderr) console.error('  stderr:', stderr);
+            reject(err);
+          } else {
+            console.log(`✅ Printer: lot sent to "${this.config.name}"`);
+            resolve();
+          }
+        });
+      });
+    } catch (err) {
+      // Already logged above
+    }
+  }
+
+  /* ───── Format label text ───── */
+
+  /**
    * Format lot data into printer-friendly text.
-   * Line width ~48 chars for 80mm thermal.
+   * Line width for 76mm paper — ~32 chars monospace.
    */
   _formatLotLabel(data) {
-    const sep = '=' .repeat(40);
-    const dash = '-' .repeat(40);
+    const W = 32; // chars for 76mm paper
+    const sep = '='.repeat(W);
+    const dash = '-'.repeat(W);
     const lines = [];
 
-    lines.push('');
     lines.push(sep);
     lines.push('  LOT LABEL');
     lines.push(sep);
-    lines.push('');
     lines.push(`  MO     : ${data.mo}`);
     lines.push(`  Lot    : ${data.lot}`);
     lines.push(`  Produk : ${data.nama_produk || '-'}`);
-    lines.push('');
-    lines.push(dash);
-    lines.push('  RM                        Target   Actual');
+    lines.push(sep);
+    lines.push('  RM           Target  Actual');
     lines.push(dash);
 
-    data.items.forEach((item) => {
-      const name = (item.rm_name || '').padEnd(25).slice(0, 25);
+    (data.items || []).forEach((item) => {
+      const name = (item.rm_name || '').padEnd(12).slice(0, 12);
       const tgt = (item.target_weight || 0).toFixed(2).padStart(7);
       const act = item.actual_weight !== null
         ? item.actual_weight.toFixed(2).padStart(7)
-        : '   N/A';
-      lines.push(`  ${name} ${tgt}  ${act}`);
+        : '    N/A';
+      lines.push(`  ${name}${tgt} ${act}`);
     });
 
     lines.push(dash);
@@ -113,13 +193,15 @@ class PrinterService {
     lines.push(sep);
     lines.push('');
     lines.push('');
-    lines.push('');  // Extra feed
+    lines.push('');
 
-    return lines.join('\n');
+    return lines.join('\r\n');
   }
 
+  /* ───── Serial write queue ───── */
+
   /**
-   * Write raw bytes to printer.
+   * Write raw bytes to serial printer.
    * Queues if port is busy.
    */
   _write(text) {
@@ -146,7 +228,6 @@ class PrinterService {
           console.error(`❌ Printer: write error: ${err.message}`);
         }
         this._writing = false;
-        // Next item in queue
         setImmediate(() => this._processQueue());
       });
     } else {

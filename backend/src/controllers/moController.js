@@ -8,6 +8,10 @@
 const moService = require('../services/moService');
 
 class MOController {
+  constructor(printerService = null) {
+    this.printerService = printerService;
+  }
+
   /** GET /api/mo — list all MOs */
   async list(req, res, next) {
     try {
@@ -53,6 +57,17 @@ class MOController {
         return res.status(400).json({ success: false, message: 'Data reprint lot tidak lengkap' });
       }
       const result = await moService.reprintLot(mo, lot);
+
+      // Also print full lot label to local printer
+      if (this.printerService) {
+        try {
+          const printData = await moService.getLotPrintData(mo, lot);
+          await this.printerService.printLot(printData);
+        } catch (prnErr) {
+          console.error(`❌ Reprint local print failed: ${prnErr.message}`);
+        }
+      }
+
       res.json({ success: true, data: result, message: `Print ulang lot ${lot} — ${result.count} RM dikirim` });
     } catch (err) {
       next(err);

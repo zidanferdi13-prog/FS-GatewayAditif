@@ -13,7 +13,7 @@
 
 const crypto = require('crypto');
 const MOModel   = require('../models/moModel');
-const { sendData, fetchData } = require('./apiService');
+const { fetchData } = require('./apiService');
 const config    = require('../config/config');
 
 /* ── Input validation helpers ──────────────────────────── */
@@ -285,11 +285,11 @@ async function getMODetail(nomor_mo) {
   };
 }
 
-/* ── Reprint (external API) ────────────────────────────── */
+/* ── Reprint ──────────────────────────────────────────── */
 
 async function reprintRM(data) {
-  await sendData('/mo/print', { data, reprint: true });
-  console.log(`🔄 Reprint sent: MO=${data.mo} lot=${data.lot} RM=${data.rm_index}`);
+  console.log(`🔄 Reprint: MO=${data.mo} lot=${data.lot} RM=${data.rm_index}`);
+  return data;
 }
 
 async function reprintLot(nomor_mo, lot) {
@@ -310,25 +310,10 @@ async function reprintLot(nomor_mo, lot) {
 
   for (let i = 0; i < rmDetails.length; i++) {
     const rm = rmDetails[i];
-    const target = parseFloat(rm.target_weight);
-    const weight = latestWeightByRM[rm.id] ?? target;
-
-    await sendData('/mo/print', {
-      data: {
-        mo: nomor_mo,
-        lot: lot,
-        rm_index: i,
-        rm_name: rm.item,
-        scale_used: target > 5 ? 'large' : 'small',
-        weight,
-        target,
-      },
-      reprint: true,
-    });
     sent++;
   }
 
-  console.log(`🔄 Reprint lot ${lot} for MO ${nomor_mo} — ${sent} RM sent`);
+  console.log(`🔄 Reprint lot ${lot} for MO ${nomor_mo} — ${sent} RM`);
   return { success: true, count: sent };
 }
 

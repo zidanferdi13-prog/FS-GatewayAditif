@@ -72,12 +72,13 @@ const serialClient = {
 /* ════════════════════════════════════════════════════════════
    EXPRESS + HTTP SERVER
 ════════════════════════════════════════════════════════════ */
-const weightController = new WeightController(serialClient);
-const moController     = new MOController();
 
 /* ── Printer ──────────────────────────────────────────── */
 const printerService = new PrinterService(config.printer);
 printerService.connect();
+
+const weightController = new WeightController(serialClient);
+const moController     = new MOController(printerService);
 
 const app    = createApp({ weightController, moController });
 const server = http.createServer(app);
@@ -179,7 +180,7 @@ io.on('connection', socket => {
       console.log(`✅ Print lot data sent: MO=${data.mo} lot=${data.lot} (${printData.items.length} items)`);
 
       // Also send to local printer
-      printerService.printLot(printData);
+      await printerService.printLot(printData);
     } catch (err) {
       console.error('❌ print-lot failed:', err.message);
       socket.emit('print-lot-data', { success: false, error: err.message });
