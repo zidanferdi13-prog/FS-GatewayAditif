@@ -68,7 +68,11 @@ class TSPLBuilder {
    */
   static _wrapText(text, maxChars = TSPLBuilder.MAX_CHARS_PER_LINE) {
     const sanitized = TSPLBuilder._escape(text);
-    if (sanitized.length <= maxChars) return [sanitized];
+    if (sanitized.length <= maxChars) {
+      const result = [sanitized];
+      while (result.length < TSPLBuilder.MAX_WRAP_LINES) result.push('');
+      return result;
+    }
 
     const words = sanitized.split(' ');
     const lines = [];
