@@ -36,5 +36,10 @@ module.exports = {
       baseUrl:         process.env.KANBAN_API_URL   || 'https://services.ama.id/kanban',
       findOneEndpoint: '/findOne'
     }
+  },
+
+  printer: {
+    port:     process.env.PRINTER_PORT || process.env.SERIAL_PRINTER_PORT || 'COM3',
+    baudRate: parseInt(process.env.PRINTER_BAUD_RATE || '9600', 10)
   }
 };

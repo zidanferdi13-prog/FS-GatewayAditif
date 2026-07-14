@@ -12,6 +12,7 @@ const createApp = require('./src/app');
 
 const SerialService = require('./src/services/serialService');
 const moService     = require('./src/services/moService');
+const PrinterService = require('./src/services/printerService');
 const WeightController = require('./src/controllers/weightController');
 const MOController = require('./src/controllers/moController');
 
@@ -73,6 +74,10 @@ const serialClient = {
 ════════════════════════════════════════════════════════════ */
 const weightController = new WeightController(serialClient);
 const moController     = new MOController();
+
+/* ── Printer ──────────────────────────────────────────── */
+const printerService = new PrinterService(config.printer);
+printerService.connect();
 
 const app    = createApp({ weightController, moController });
 const server = http.createServer(app);
@@ -149,11 +154,36 @@ io.on('connection', socket => {
       return console.warn('⚠️  print-confirm: invalid payload ignored');
     }
 
-    console.log(`🖨️  Print confirm — MO=${data.mo} lot=${data.lot} RM[${data.rm_index}] ${data.weight}/${data.target} kg`);
+    console.log(`🖨️  Confirm — MO=${data.mo} lot=${data.lot} RM[${data.rm_index}] ${data.weight}/${data.target} kg`);
 
-    moService.recordPrintConfirm(data).catch(err =>
-      console.error('❌ recordPrintConfirm failed:', err.message)
-    );
+    try {
+      await moService.recordPrintConfirm(data);
+      socket.emit('print-confirm-ack', { success: true, mo: data.mo, lot: data.lot, rm_index: data.rm_index });
+    } catch (err) {
+      console.error('❌ recordPrintConfirm failed:', err.message);
+      socket.emit('print-confirm-ack', { success: false, error: err.message });
+    }
+  });
+
+  /* ── print-lot ────────────────────────────────────── */
+  socket.on('print-lot', async data => {
+    if (!data || !isValidMOString(data.mo) || typeof data.lot !== 'number') {
+      return console.warn('⚠️  print-lot: invalid payload ignored');
+    }
+
+    console.log(`🖨️🖨️  Print lot — MO=${data.mo} lot=${data.lot}`);
+
+    try {
+      const printData = await moService.getLotPrintData(data.mo, data.lot);
+      socket.emit('print-lot-data', { success: true, data: printData });
+      console.log(`✅ Print lot data sent: MO=${data.mo} lot=${data.lot} (${printData.items.length} items)`);
+
+      // Also send to local printer
+      printerService.printLot(printData);
+    } catch (err) {
+      console.error('❌ print-lot failed:', err.message);
+      socket.emit('print-lot-data', { success: false, error: err.message });
+    }
   });
 
   /* ── mo-completed ─────────────────────────────────── */

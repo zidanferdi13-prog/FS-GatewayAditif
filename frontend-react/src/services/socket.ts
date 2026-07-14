@@ -4,6 +4,7 @@ import type {
   PrintConfirmPayload,
   MOConfirmedPayload,
   MOCompletedPayload,
+  PrintLotData,
 } from '@/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -18,6 +19,10 @@ export interface ServerToClientEvents {
   'weightData':          (data: WeightEvent) => void;
   /** Backend responds with MO details after 'mo-confirmed' */
   'mo-data-confirm':     (data: { success: boolean; data?: MODataResponse; error?: string }) => void;
+  /** Backend ack after print-confirm insert */
+  'print-confirm-ack':   (data: PrintConfirmAck) => void;
+  /** Backend sends lot print data after print-lot request */
+  'print-lot-data':      (data: { success: boolean; data?: PrintLotData; error?: string }) => void;
 }
 
 export interface MODataResponse {
@@ -29,11 +34,23 @@ export interface MODataResponse {
   produk_rm_qty:   number[];
   target_weights:  string[];
   lot?:            number;
+  /** RM index to resume from (for duplicate MOs) */
+  current_rm?:     number;
+}
+
+/** Response from server after print-confirm */
+export interface PrintConfirmAck {
+  success:  boolean;
+  mo:       string;
+  lot:      number;
+  rm_index: number;
+  error?:   string;
 }
 
 export interface ClientToServerEvents {
   'mo-confirmed': (payload: MOConfirmedPayload) => void;
   'print-confirm': (payload: PrintConfirmPayload) => void;
+  'print-lot':    (payload: { mo: string; lot: number; timestamp: string }) => void;
   'mo-completed':  (payload: MOCompletedPayload) => void;
 }
 

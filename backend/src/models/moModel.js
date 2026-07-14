@@ -76,11 +76,14 @@ class MOModel {
       VALUES (?, ?, ?, ?)
     `;
     try {
+      const ts = data.timestamp
+        ? data.timestamp.replace('T', ' ').replace('Z', '')
+        : null;
       const [result] = await db.execute(query, [
         data.id || crypto.randomUUID(),
         data.rm_detail_id,
         data.actual_weight,
-        data.timestamp
+        ts || new Date().toISOString().replace('T', ' ').replace('Z', '')
       ]);
       return result;
     } catch (error) {
@@ -169,6 +172,46 @@ class MOModel {
   }
 
   /**
+   * Get weight records for MO ordered ASC (for lot-based slicing)
+   */
+  static async getWeightRecordsForMOAsc(moId) {
+    const query = `
+      SELECT wr.id, wr.rm_detail_id, wr.actual_weight, wr.timestamp
+      FROM tbl_weight_records wr
+      JOIN tbl_mo_rm_details rm ON wr.rm_detail_id = rm.id
+      WHERE rm.mo_id = ?
+      ORDER BY wr.timestamp ASC
+    `;
+    try {
+      const [rows] = await db.execute(query, [moId]);
+      return rows;
+    } catch (error) {
+      console.error('❌ Error getting weight records ASC:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get RM details for a MO ordered by creation (matches frontend RM index)
+   * @param {String} moId - MO UUID
+   * @returns {Promise<Array>}
+   */
+  static async getRMDetailsByMO(moId) {
+    const query = `
+      SELECT * FROM tbl_mo_rm_details
+      WHERE mo_id = ?
+      ORDER BY created_at ASC
+    `;
+    try {
+      const [rows] = await db.execute(query, [moId]);
+      return rows;
+    } catch (error) {
+      console.error('❌ Error getting RM details:', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Get weight records for specific MO via FK chain
    * tbl_m_manufacturing_orders → tbl_mo_rm_details → tbl_weight_records
    * @param {String} moId - MO UUID
@@ -199,8 +242,8 @@ class MOModel {
    */
   static async updateStatus(moId, status) {
     const query = `
-      UPDATE tbl_m_manufacturing_orders 
-      SET status = ?, updated_at = NOW() 
+      UPDATE tbl_m_manufacturing_orders
+      SET status = ?, last_updated_at = NOW()
       WHERE id = ?
     `;
     try {
@@ -219,12 +262,15 @@ class MOModel {
    */
   static async markAsCompleted(data) {
     const query = `
-      UPDATE tbl_m_manufacturing_orders 
-      SET status = 'completed', updated_at = ? 
+      UPDATE tbl_m_manufacturing_orders
+      SET status = 'completed', last_updated_at = ?
       WHERE nomor_mo = ?
     `;
     try {
-      const [result] = await db.execute(query, [data.timestamp, data.mo]);
+      const ts = data.timestamp
+        ? data.timestamp.replace('T', ' ').replace('Z', '')
+        : new Date().toISOString().replace('T', ' ').replace('Z', '');
+      const [result] = await db.execute(query, [ts, data.mo]);
       return result;
     } catch (error) {
       console.error('❌ Error marking MO as completed:', error.message);

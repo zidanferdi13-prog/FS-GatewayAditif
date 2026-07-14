@@ -1,11 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, type MOListItem, type MODetail } from '@/services/api';
+import { api, type MOListItem, type MODetail, type RMDetailItem } from '@/services/api';
 import { cn } from '@/utils/cn';
 import { ModalOverlay } from '@/components/modal/ModalOverlay';
-import { FileText, ArrowLeft, Printer, Loader2, Search, X } from 'lucide-react';
+import { FileText, ArrowLeft, Printer, Loader2, Search, X, CheckCircle2, AlertCircle } from 'lucide-react';
 
 type SortKey = 'nomor_mo' | 'nama_produk' | 'status' | 'created_at';
+
+/** A single lot with its material breakdown */
+interface LotView {
+  number:    number;
+  materials: RMDetailItem[];
+  totalWeight: number;
+  totalRecorded: number;
+  printed:   boolean;
+}
 
 export function LaporanPage() {
   const nav = useNavigate();
@@ -24,8 +33,22 @@ export function LaporanPage() {
   const [detailOpen, setDetailOpen]   = useState(false);
 
   // ── Reprint state ───────────────────────────────────────────────────────────
-  const [reprinting, setReprinting] = useState<string | null>(null);
+  const [reprinting, setReprinting] = useState<number | null>(null);
   const [reprintMsg, setReprintMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // ── Computed lots ───────────────────────────────────────────────────────────
+  const lots: LotView[] = detailMO
+    ? Array.from({ length: detailMO.qty_plan }, (_, i) => {
+        const number = i + 1;
+        const totalWeight = detailMO.rm_details.reduce((s, rm) => s + rm.target_weight, 0);
+        const totalRecorded = detailMO.rm_details.reduce((s, rm) => {
+          const latest = rm.weights[0]?.actual_weight ?? 0;
+          return s + latest;
+        }, 0);
+        const printed = detailMO.rm_details.some(rm => rm.weights.length > 0);
+        return { number, materials: detailMO.rm_details, totalWeight, totalRecorded, printed };
+      })
+    : [];
 
   // ── Fetch list ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -42,35 +65,27 @@ export function LaporanPage() {
     setDetailOpen(true);
     setDetailLoading(true);
     setDetailMO(null);
+    setReprintMsg(null);
     try {
       const d = await api.getMODetail(mo);
       setDetailMO(d);
-    } catch (e: any) {
+    } catch {
       setDetailMO(null);
-      setError(e.message);
     } finally {
       setDetailLoading(false);
     }
   };
 
-  // ── Reprint ────────────────────────────────────────────────────────────────
-  const handleReprint = async (rm: MODetail['rm_details'][0], mo: MODetail) => {
-    const key = `${mo.nomor_mo}-${rm.id}`;
-    setReprinting(key);
+  // ── Reprint lot ────────────────────────────────────────────────────────────
+  const handleReprintLot = async (lot: number) => {
+    if (!detailMO) return;
+    setReprinting(lot);
     setReprintMsg(null);
     try {
-      await api.reprintRM({
-        mo: mo.nomor_mo,
-        lot: mo.lot,
-        rm_index: mo.rm_details.indexOf(rm),
-        rm_name: rm.item,
-        scale_used: rm.target_weight > 5 ? 'large' : 'small',
-        weight: rm.weights[0]?.actual_weight ?? 0,
-        target: rm.target_weight,
-      });
-      setReprintMsg({ ok: true, text: `Print ulang ${rm.item} dikirim` });
+      const res = await api.reprintLot(detailMO.nomor_mo, lot);
+      setReprintMsg({ ok: true, text: `Print ulang Lot ${lot} — ${res.count} RM dikirim` });
     } catch {
-      setReprintMsg({ ok: false, text: `Gagal print ulang ${rm.item}` });
+      setReprintMsg({ ok: false, text: `Gagal print ulang Lot ${lot}` });
     } finally {
       setReprinting(null);
     }
@@ -111,7 +126,6 @@ export function LaporanPage() {
         <FileText size={18} className="text-c-blue" />
         <h1 className="text-base font-bold text-t-primary">Laporan MO</h1>
         <div className="flex-1" />
-        {/* search */}
         <div className="relative w-56">
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-t-muted" />
           <input
@@ -124,7 +138,7 @@ export function LaporanPage() {
         </div>
       </div>
 
-      {/* ── Content ─────────────────────────────────────────────────────────── */}
+      {/* ── List table ──────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-auto p-6">
         {loading ? (
           <div className="flex items-center justify-center h-40 text-t-secondary gap-2">
@@ -184,8 +198,8 @@ export function LaporanPage() {
 
       {/* ── Detail Modal ────────────────────────────────────────────────────── */}
       <ModalOverlay isOpen={detailOpen} onClose={() => { setDetailOpen(false); setReprintMsg(null); }}>
-        <div className="dialog min-w-[520px] max-w-[640px] max-h-[80vh] flex flex-col">
-          {/* ── Modal header ────────────────────────────────────────────────── */}
+        <div className="dialog min-w-[620px] max-w-[780px] max-h-[85vh] flex flex-col">
+          {/* ── Header ──────────────────────────────────────────────────────── */}
           <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-b-card">
             <div className="flex items-center gap-2">
               <FileText size={18} className="text-c-blue" />
@@ -199,7 +213,7 @@ export function LaporanPage() {
             </button>
           </div>
 
-          {/* ── Modal body ──────────────────────────────────────────────────── */}
+          {/* ── Body ────────────────────────────────────────────────────────── */}
           <div className="overflow-auto p-5 space-y-4">
             {detailLoading ? (
               <div className="flex items-center justify-center h-32 text-t-secondary gap-2">
@@ -229,62 +243,113 @@ export function LaporanPage() {
                   </div>
                 )}
 
-                {/* RM table */}
+                {/* Per-lot table */}
                 <div>
-                  <h3 className="text-xs font-bold text-t-primary uppercase tracking-wider mb-2">
-                    RM Details & Weight History
-                  </h3>
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="text-t-muted uppercase tracking-wider border-b border-b-card">
-                        <Th className="text-left">Item</Th>
-                        <Th className="text-right">Qty</Th>
-                        <Th className="text-right">Target (kg)</Th>
-                        <Th className="text-right">Weights (kg)</Th>
-                        <Th className="text-right">Print</Th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {detailMO.rm_details.map((rm, idx) => (
-                        <tr key={rm.id} className="border-b border-b-card/50 hover:bg-bg-surface/40 transition-colors">
-                          <td className="py-2 pr-2 text-t-primary font-medium">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xs font-bold text-t-primary uppercase tracking-wider">
+                      Daftar Lot & Material
+                    </h3>
+                    <span className="text-[10px] text-t-muted font-mono">
+                      {detailMO.rm_details.length} RM per lot
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {lots.map((lot) => (
+                      <div key={lot.number}
+                        className="rounded-xl border border-b-card bg-bg-surface/30 overflow-hidden">
+                        {/* Lot header */}
+                        <div className="flex items-center justify-between px-4 py-2 bg-bg-elevated/50">
+                          <div className="flex items-center gap-2">
                             <span className={cn(
-                              'inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-bold mr-1.5',
-                              rm.target_weight > 5
-                                ? 'bg-c-purple-dim text-c-purple'
+                              'inline-flex items-center justify-center w-6 h-6 rounded-lg text-[10px] font-extrabold',
+                              lot.printed
+                                ? 'bg-c-green-dim text-c-green'
                                 : 'bg-c-blue-dim text-c-blue',
-                            )}>{idx + 1}</span>
-                            {rm.item}
-                          </td>
-                          <td className="py-2 px-2 text-right text-t-secondary font-mono">{rm.qty}</td>
-                          <td className="py-2 px-2 text-right text-t-secondary font-mono">{rm.target_weight}</td>
-                          <td className="py-2 px-2 text-right">
-                            {rm.weights.length > 0
-                              ? <span className="font-mono text-t-primary">{rm.weights.map(w => w.actual_weight).join(', ')}</span>
-                              : <span className="text-t-muted">—</span>
-                            }
-                          </td>
-                          <td className="py-2 px-2 text-right">
+                            )}>
+                              {lot.number}
+                            </span>
+                            <span className="text-xs font-bold text-t-primary">Lot {lot.number}</span>
+                            {lot.printed && (
+                              <span className="flex items-center gap-1 text-[10px] text-c-green">
+                                <CheckCircle2 size={11} />
+                                Sudah ditimbang
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-4">
+                            <div className="text-[10px] text-t-muted">
+                              <span className="font-mono text-t-secondary font-semibold">{lot.totalWeight.toFixed(2)}</span> kg total
+                            </div>
                             <button
-                              onClick={() => handleReprint(rm, detailMO)}
-                              disabled={reprinting === `${detailMO.nomor_mo}-${rm.id}`}
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase
-                                         bg-bg-elevated text-t-secondary border border-b-card
-                                         hover:border-c-blue hover:text-c-blue transition-all
+                              onClick={() => handleReprintLot(lot.number)}
+                              disabled={reprinting === lot.number}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-pill text-[11px] font-bold
+                                         bg-c-blue-dim text-c-blue border border-c-blue/30
+                                         hover:bg-c-blue hover:text-white transition-all
                                          disabled:opacity-40"
                             >
-                              {reprinting === `${detailMO.nomor_mo}-${rm.id}` ? (
-                                <Loader2 size={12} className="animate-spin" />
+                              {reprinting === lot.number ? (
+                                <Loader2 size={13} className="animate-spin" />
                               ) : (
-                                <Printer size={12} />
+                                <Printer size={13} />
                               )}
-                              Cetak
+                              Cetak Lot
                             </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </div>
+                        </div>
+
+                        {/* Lot RM table */}
+                        <table className="w-full text-[11px]">
+                          <thead>
+                            <tr className="text-t-muted uppercase tracking-wider border-t border-b-card">
+                              <th className="text-left py-1.5 px-4 font-semibold">Material</th>
+                              <th className="text-right py-1.5 px-2 font-semibold">Qty</th>
+                              <th className="text-right py-1.5 px-2 font-semibold">Target (kg)</th>
+                              <th className="text-right py-1.5 px-3 font-semibold">Aktual (kg)</th>
+                              <th className="text-right py-1.5 px-2 font-semibold">Scale</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {lot.materials.map((rm, idx) => {
+                              const latestW = rm.weights[0]?.actual_weight;
+                              return (
+                                <tr key={rm.id} className="border-t border-b-card/40">
+                                  <td className="py-1.5 pr-2 pl-4 text-t-primary font-medium">
+                                    <span className={cn(
+                                      'inline-flex items-center justify-center w-3.5 h-3.5 rounded text-[8px] font-bold mr-1.5',
+                                      rm.target_weight > 5
+                                        ? 'bg-c-purple-dim text-c-purple'
+                                        : 'bg-c-blue-dim text-c-blue',
+                                    )}>{idx + 1}</span>
+                                    {rm.item}
+                                  </td>
+                                  <td className="py-1.5 px-2 text-right text-t-secondary font-mono">{rm.qty}</td>
+                                  <td className="py-1.5 px-2 text-right text-t-secondary font-mono">{rm.target_weight.toFixed(2)}</td>
+                                  <td className="py-1.5 px-3 text-right font-mono">
+                                    {latestW !== undefined ? (
+                                      <span className={cn(
+                                        Math.abs(latestW - rm.target_weight) / rm.target_weight <= 0.02
+                                          ? 'text-c-green' : 'text-c-amber'
+                                      )}>
+                                        {latestW.toFixed(2)}
+                                      </span>
+                                    ) : (
+                                      <span className="text-t-muted">—</span>
+                                    )}
+                                  </td>
+                                  <td className="py-1.5 px-2 text-right">
+                                    <ScaleBadge type={rm.target_weight > 20 ? 'large' : 'small'} />
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </>
             ) : (
@@ -297,7 +362,7 @@ export function LaporanPage() {
   );
 }
 
-// ── Helper sub-components ───────────────────────────────────────────────────
+// ── Helpers ─────────────────────────────────────────────────────────────────
 
 interface ThProps {
   children: React.ReactNode;
@@ -348,5 +413,18 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
       <span className="text-t-muted min-w-[80px]">{label}</span>
       <span className="text-t-primary font-medium">{value}</span>
     </div>
+  );
+}
+
+function ScaleBadge({ type }: { type: string }) {
+  return (
+    <span className={cn(
+      'inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider',
+      type === 'large'
+        ? 'bg-c-purple-dim text-c-purple'
+        : 'bg-c-blue-dim text-c-blue',
+    )}>
+      {type === 'large' ? 'L' : 'S'}
+    </span>
   );
 }

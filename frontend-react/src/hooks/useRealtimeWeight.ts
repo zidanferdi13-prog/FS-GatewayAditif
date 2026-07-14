@@ -54,7 +54,7 @@ export function useRealtimeWeight() {
         `[${source.toUpperCase()}] RM[${currentRMIndex}]: ${rm.name} | ${weight}/${target} kg | ${scale}`,
       );
 
-      // Notify backend
+      // Notify backend — insert weight record
       socketService.emit('print-confirm', {
         mo:         activeMO,
         lot:        currentLot,
@@ -67,10 +67,20 @@ export function useRealtimeWeight() {
       });
 
       // Advance after delay (matches original 1.5 s behaviour)
+      const completedLot = currentLot; // Capture before advance
       setTimeout(() => {
         setAutoConfirmActive(false);
 
-        const result = advanceRM();
+        const result = useMOStore.getState().advanceRM();
+
+        if (result === 'complete' || result === 'next_lot') {
+          // Emit print-lot for the completed lot
+          socketService.emit('print-lot', {
+            mo:        activeMO,
+            lot:       completedLot,
+            timestamp: new Date().toISOString(),
+          });
+        }
 
         if (result === 'complete') {
           const { activeMO, totalLot } = useMOStore.getState();
@@ -84,9 +94,8 @@ export function useRealtimeWeight() {
         }
 
         if (result === 'next_lot') {
-          // Show lot-complete toast info
           const { currentLot: nextLot } = useMOStore.getState();
-          useUIStore.getState().setLotComplete(nextLot - 1, nextLot);
+          useUIStore.getState().setLotComplete(completedLot, nextLot);
           openModal('lotComplete');
           setTimeout(() => closeModal('lotComplete'), 2600);
         }

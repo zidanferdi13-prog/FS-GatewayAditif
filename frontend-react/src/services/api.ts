@@ -77,7 +77,7 @@ export const api = {
   getMODetail: (nomor_mo: string): Promise<MODetail> =>
     request<MODetail>(`/mo/${encodeURIComponent(nomor_mo)}`),
 
-  /** Re-trigger print */
+  /** Re-trigger print for single RM */
   reprintRM: (payload: {
     mo: string;
     lot: number;
@@ -90,5 +90,12 @@ export const api = {
     request<void>('/mo/reprint', {
       method: 'POST',
       body: JSON.stringify(payload),
+    }),
+
+  /** Re-print entire lot (all RM items) */
+  reprintLot: (nomor_mo: string, lot: number): Promise<{ count: number }> =>
+    request<{ count: number }>('/mo/reprint-lot', {
+      method: 'POST',
+      body: JSON.stringify({ mo: nomor_mo, lot }),
     }),
 };

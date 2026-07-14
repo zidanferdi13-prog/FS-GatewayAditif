@@ -3,10 +3,11 @@
 /**
  * MO Service
  * Handles all Manufacturing Order business logic:
- *   - Fetch MO data from Kanban API
+ *   - Fetch MO data from Kanban API (or resume existing)
  *   - Parse RM items and calculate per-lot target weights
- *   - Persist to database (non-blocking — errors are logged, not thrown)
- *   - Record print confirmations
+ *   - Persist to database
+ *   - Record weight records on confirm
+ *   - Provide lot print data
  *   - Mark MO as completed
  */
 
@@ -17,20 +18,50 @@ const config    = require('../config/config');
 
 /* ── Input validation helpers ──────────────────────────── */
 
-/**
- * Validate that a nomor_mo string is safe before using it in API calls.
- * Allowed: alphanumeric, hyphens, underscores, max 60 chars.
- */
 function isValidMONumber(nomor_mo) {
   if (typeof nomor_mo !== 'string') return false;
   if (nomor_mo.length === 0 || nomor_mo.length > 60) return false;
   return /^[A-Za-z0-9\-_./]+$/.test(nomor_mo);
 }
 
+/* ── Resume helpers ────────────────────────────────────── */
+
+/**
+ * Build resume payload from existing MO data + weight records.
+ * Calculates how many lots are fully done and which RM index to resume at.
+ */
+async function buildResumePayload(mo, weightRecords) {
+  const rmDetails = (mo.rm_details || []).filter(d => d.id !== null);
+  const totalRM = rmDetails.length;
+
+  const produkRMItems = rmDetails.map(r => r.item);
+  const produkRMQty   = rmDetails.map(r => parseFloat(r.qty));
+  const targetWeights = rmDetails.map(r => parseFloat(r.target_weight));
+
+  const totalRecords   = weightRecords.length;
+  const completedLots  = totalRM > 0 ? Math.floor(totalRecords / totalRM) : 0;
+  const currentRMIndex = totalRM > 0 ? totalRecords % totalRM : 0;
+
+  console.log(`♻️  Resuming MO ${mo.nomor_mo}: ${completedLots} lot(s) done, RM[${currentRMIndex}] next`);
+
+  return {
+    mo_id:           mo.id,
+    nomor_mo:        mo.nomor_mo,
+    qty_plan:        mo.qty_plan,
+    lot:             completedLots,
+    current_rm:      currentRMIndex,
+    produk_rm_items: produkRMItems,
+    produk_rm_qty:   produkRMQty,
+    target_weights:  targetWeights,
+    total_rm:        totalRM,
+  };
+}
+
 /* ── Main MO fetch + process ───────────────────────────── */
 
 /**
  * Fetch MO from Kanban API, parse RM data, save to DB.
+ * If MO already exists in DB with status 'active', resume instead.
  * @param {string} nomor_mo
  * @returns {Promise<object>} Processed MO payload ready to emit to the client
  * @throws {Error} when API returns an error or nomor_mo is invalid
@@ -42,8 +73,20 @@ async function fetchAndProcessMO(nomor_mo) {
     throw err;
   }
 
+  // ── Check if MO already exists in DB ──
+  const existing = await MOModel.getByNomorMO(nomor_mo);
+  if (existing) {
+    if (existing.status === 'completed') {
+      throw new Error('MO sudah selesai');
+    }
+    // Resume active MO — get weight records, calc resume point
+    const weightRecords = await MOModel.getWeightRecordsForMOAsc(existing.id);
+    return await buildResumePayload(existing, weightRecords);
+  }
+
+  // ── Fetch from Kanban API ──
   const apiData = await sendData(config.api.kanban.findOneEndpoint, { nomor_mo });
-  const item    = apiData;   // alias — keep original naming intent
+  const item    = apiData;
 
   const {
     t_mo_id, work_center, nomor_mo: moNumber, nama_produk,
@@ -71,9 +114,9 @@ async function fetchAndProcessMO(nomor_mo) {
 
   console.log(`📦 MO ${moNumber} — ${produkRMItems.length} RM, ${qty_plan} lot(s)`);
 
-  /* — Persist to DB (best-effort, non-blocking) — */
-  const moUUID  = crypto.randomUUID();
-  const rmIDs   = produkRMItems.map(() => crypto.randomUUID());
+  /* — Persist to DB — */
+  const moUUID = crypto.randomUUID();
+  const rmIDs  = produkRMItems.map(() => crypto.randomUUID());
   try {
     await MOModel.create({
       id: moUUID, t_mo_id, work_center, nomor_mo: moNumber, nama_produk,
@@ -100,6 +143,7 @@ async function fetchAndProcessMO(nomor_mo) {
     nomor_mo:        moNumber,
     qty_plan,
     lot:             lot || 0,
+    current_rm:      0,
     produk_rm_items: produkRMItems,
     produk_rm_qty:   produkRMQty,
     target_weights:  targetWeights,
@@ -107,61 +151,107 @@ async function fetchAndProcessMO(nomor_mo) {
   };
 }
 
-/* ── Print confirmation ────────────────────────────────── */
+/* ── Weight record (insert on confirm) ─────────────────── */
 
 /**
- * Forward a print-confirm event to the external API.
- * @param {object} data - from the 'print-confirm' socket event
+ * Insert a weight record when operator confirms weighing.
+ * @param {object} data - from 'print-confirm' socket event
+ *   { mo: nomor_mo, lot, rm_index, rm_name, weight, target, timestamp }
  */
 async function recordPrintConfirm(data) {
-  await sendData('/mo/print', { data });
-  console.log(`✅ Print confirm sent: MO=${data.mo} lot=${data.lot} RM=${data.rm_index}`);
+  try {
+    const mo = await MOModel.getByNomorMO(data.mo);
+    if (!mo) {
+      console.error(`❌ MO ${data.mo} not found for weight record`);
+      return;
+    }
+
+    const rmDetails = await MOModel.getRMDetailsByMO(mo.id);
+    const rmDetail  = rmDetails[data.rm_index];
+    if (!rmDetail) {
+      console.error(`❌ RM index ${data.rm_index} not found for MO ${data.mo}`);
+      return;
+    }
+
+    await MOModel.createWeightRecord({
+      id:            crypto.randomUUID(),
+      rm_detail_id:  rmDetail.id,
+      actual_weight: data.weight,
+      timestamp:     data.timestamp || new Date().toISOString(),
+    });
+    console.log(`✅ Weight recorded: MO=${data.mo} Lot=${data.lot} RM[${data.rm_index}]=${data.weight}kg`);
+  } catch (err) {
+    console.error('❌ recordPrintConfirm error:', err.message);
+    throw err;
+  }
+}
+
+/* ── Print data for a completed lot ────────────────────── */
+
+/**
+ * Get all RM data for printing when a lot clears.
+ * Returns MO + lot info + each RM's target and actual weight.
+ * @param {string} nomor_mo
+ * @param {number} lotNumber
+ * @returns {Promise<object>} { mo, lot, nama_produk, items: [{ rm_index, rm_name, target_weight, actual_weight }] }
+ */
+async function getLotPrintData(nomor_mo, lotNumber) {
+  const mo = await MOModel.getByNomorMO(nomor_mo);
+  if (!mo) throw new Error('MO tidak ditemukan');
+
+  const rmDetails = (mo.rm_details || []).filter(d => d.id !== null);
+  const totalRM = rmDetails.length;
+  if (totalRM === 0) throw new Error('MO tidak memiliki RM detail');
+
+  // Get all weight records ASC, slice the ones for this lot
+  const allWeights = await MOModel.getWeightRecordsForMOAsc(mo.id);
+  const startIdx   = lotNumber * totalRM;
+  const lotWeights = allWeights.slice(startIdx, startIdx + totalRM);
+
+  const items = rmDetails.map((rm, i) => {
+    const wr = lotWeights[i];
+    return {
+      rm_index:      i,
+      rm_name:       rm.item,
+      target_weight: parseFloat(rm.target_weight),
+      actual_weight: wr ? parseFloat(wr.actual_weight) : null,
+    };
+  });
+
+  return {
+    mo:          nomor_mo,
+    lot:         lotNumber,
+    nama_produk: mo.nama_produk,
+    items,
+  };
 }
 
 /* ── MO completion ─────────────────────────────────────── */
 
-/**
- * Mark an MO as completed in DB and notify external API.
- * @param {object} data - from the 'mo-completed' socket event
- */
 async function completeMO(data) {
   try {
     await MOModel.markAsCompleted(data);
     console.log(`✅ MO ${data.mo} marked as completed in DB`);
+    console.log(data, "payload ke api")
   } catch (dbErr) {
     console.error('❌ DB error on MO completion (non-fatal):', dbErr.message);
   }
-
-  sendData('/mo/completed', { data }).catch(e =>
-    console.error('❌ Failed to notify /mo/completed:', e.message)
-  );
 }
 
 /* ── MO listing ──────────────────────────────────────────── */
 
-/**
- * List all MOs from the database (newest first)
- * @returns {Promise<Array>}
- */
 async function listMOs() {
   return await MOModel.getAll();
 }
 
 /* ── MO detail ──────────────────────────────────────────── */
 
-/**
- * Get full MO detail including RM items + weight records
- * @param {string} nomor_mo
- * @returns {Promise<object|null>}
- */
 async function getMODetail(nomor_mo) {
   const mo = await MOModel.getByNomorMO(nomor_mo);
   if (!mo) return null;
 
-  // Fetch weight records for this MO
   const weightRecords = await MOModel.getWeightRecordsForMO(mo.id);
 
-  // Group weight records by rm_detail_id
   const rmWeightMap = {};
   for (const wr of weightRecords) {
     if (!rmWeightMap[wr.rm_detail_id]) rmWeightMap[wr.rm_detail_id] = [];
@@ -172,7 +262,6 @@ async function getMODetail(nomor_mo) {
     });
   }
 
-  // Attach weight history to each RM detail
   const rmDetails = (mo.rm_details || []).map(rm => ({
     ...rm,
     qty:           parseFloat(rm.qty),
@@ -196,17 +285,51 @@ async function getMODetail(nomor_mo) {
   };
 }
 
-/* ── Reprint ────────────────────────────────────────────── */
+/* ── Reprint (external API) ────────────────────────────── */
 
-/**
- * Re-trigger print for a specific RM weight record.
- * Re-emits the print-confirm data that was originally sent.
- * @param {object} data - { mo, lot, rm_index, rm_name, scale_used, weight, target }
- * @returns {Promise<void>}
- */
 async function reprintRM(data) {
   await sendData('/mo/print', { data, reprint: true });
   console.log(`🔄 Reprint sent: MO=${data.mo} lot=${data.lot} RM=${data.rm_index}`);
 }
 
-module.exports = { fetchAndProcessMO, recordPrintConfirm, completeMO, listMOs, getMODetail, reprintRM };
+async function reprintLot(nomor_mo, lot) {
+  const mo = await MOModel.getByNomorMO(nomor_mo);
+  if (!mo) throw new Error('MO tidak ditemukan');
+
+  const weightRecords = await MOModel.getWeightRecordsForMO(mo.id);
+
+  const latestWeightByRM = {};
+  for (const wr of weightRecords) {
+    if (!latestWeightByRM[wr.rm_detail_id]) {
+      latestWeightByRM[wr.rm_detail_id] = parseFloat(wr.actual_weight);
+    }
+  }
+
+  const rmDetails = (mo.rm_details || []).filter(d => d.id !== null);
+  let sent = 0;
+
+  for (let i = 0; i < rmDetails.length; i++) {
+    const rm = rmDetails[i];
+    const target = parseFloat(rm.target_weight);
+    const weight = latestWeightByRM[rm.id] ?? target;
+
+    await sendData('/mo/print', {
+      data: {
+        mo: nomor_mo,
+        lot: lot,
+        rm_index: i,
+        rm_name: rm.item,
+        scale_used: target > 5 ? 'large' : 'small',
+        weight,
+        target,
+      },
+      reprint: true,
+    });
+    sent++;
+  }
+
+  console.log(`🔄 Reprint lot ${lot} for MO ${nomor_mo} — ${sent} RM sent`);
+  return { success: true, count: sent };
+}
+
+module.exports = { fetchAndProcessMO, recordPrintConfirm, getLotPrintData, completeMO, listMOs, getMODetail, reprintRM, reprintLot };

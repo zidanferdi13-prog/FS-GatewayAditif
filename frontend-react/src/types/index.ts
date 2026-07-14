@@ -18,6 +18,8 @@ export interface MOData {
   target_weights:  string[];
   /** Lot offset to resume at (if MO was partially completed) */
   lot?: number;
+  /** RM index to resume from (for duplicate MOs) */
+  current_rm?: number;
 }
 
 /** Normalised material record derived from MOData */
@@ -76,6 +78,26 @@ export interface MOCompletedPayload {
   mo:              string;
   lots_completed:  number;
   timestamp:       string;
+}
+
+/** Payload emitted to server when a lot is ready for printing */
+export interface PrintLotPayload {
+  mo:         string;
+  lot:        number;
+  timestamp:  string;
+}
+
+/** Print data returned by server for a completed lot */
+export interface PrintLotData {
+  mo:          string;
+  lot:         number;
+  nama_produk: string;
+  items: Array<{
+    rm_index:      number;
+    rm_name:       string;
+    target_weight: number;
+    actual_weight: number | null;
+  }>;
 }
 
 // ── UI ────────────────────────────────────────────────────────────────────────

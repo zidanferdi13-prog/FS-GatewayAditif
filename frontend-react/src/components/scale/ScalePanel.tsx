@@ -59,9 +59,18 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
       timestamp:  new Date().toISOString(),
     });
 
+    const completedLot = currentLot; // Capture before advance
     setTimeout(() => {
       useMOStore.getState().setAutoConfirmActive(false);
       const result = useMOStore.getState().advanceRM();
+
+      if (result === 'complete' || result === 'next_lot') {
+        socketService.emit('print-lot', {
+          mo:        activeMO,
+          lot:       completedLot,
+          timestamp: new Date().toISOString(),
+        });
+      }
 
       if (result === 'complete') {
         const st = useMOStore.getState();
@@ -76,7 +85,7 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
 
       if (result === 'next_lot') {
         const st = useMOStore.getState();
-        useUIStore.getState().setLotComplete(st.currentLot - 1, st.currentLot);
+        useUIStore.getState().setLotComplete(completedLot, st.currentLot);
         openModal('lotComplete');
         setTimeout(() => useUIStore.getState().closeModal('lotComplete'), 2600);
       }

@@ -62,7 +62,7 @@ export const useMOStore = create<MOStoreState>()(
         set({
           moData:         data,
           materials,
-          currentRMIndex: 0,
+          currentRMIndex: data.current_rm ?? 0,
           currentLot:     data.lot ?? 0,
           totalLot:       data.qty_plan,
         });

@@ -44,6 +44,20 @@ class MOController {
       next(err);
     }
   }
+
+  /** POST /api/mo/reprint-lot — re-print all RM for one lot */
+  async reprintLot(req, res, next) {
+    try {
+      const { mo, lot } = req.body;
+      if (!mo || lot === undefined) {
+        return res.status(400).json({ success: false, message: 'Data reprint lot tidak lengkap' });
+      }
+      const result = await moService.reprintLot(mo, lot);
+      res.json({ success: true, data: result, message: `Print ulang lot ${lot} — ${result.count} RM dikirim` });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = MOController;
