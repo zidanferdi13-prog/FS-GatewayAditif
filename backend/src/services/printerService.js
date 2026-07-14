@@ -1,252 +1,252 @@
 'use strict';
 
 /**
- * Printer Service
- * Handles printing lot labels via Serial (COM) or Windows printer.
+ * PrinterService
+ * Transport layer for TSPL labels sent to a Windows label printer.
  *
- * Serial mode: raw text via SerialPort.
- * Windows mode: plain text via PowerShell Out-Printer (no native modules).
+ * Uses PowerShell Write-Printer cmdlet to send raw bytes directly
+ * to the Windows Print Spooler — NOT Out-Printer which renders text.
+ *
+ * Target: XPrinter XP-420B via USB001 port, driver resmi XP-420B.
  */
 
-const { SerialPort } = require('serialport');
 const { execFile } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const TSPLBuilder = require('./TSPLBuilder');
+
+/* ── Custom Error Classes ─────────────────────────────────── */
+
+class PrinterNotFoundError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'PrinterNotFoundError';
+  }
+}
+
+class PrinterOfflineError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'PrinterOfflineError';
+  }
+}
+
+class PrinterTimeoutError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'PrinterTimeoutError';
+  }
+}
+
+class PrinterIOError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'PrinterIOError';
+  }
+}
+
+/* ── PrinterService ───────────────────────────────────────── */
 
 class PrinterService {
-  constructor(config = null) {
-    this.config = config;
-    this.port = null;
-    this.connected = false;
-    this._writeQueue = [];
-    this._writing = false;
+  /**
+   * @param {object}  config
+   * @param {string}  config.name    - Windows printer name (e.g. "XPrinter XP-420B")
+   * @param {number}  config.timeout - Timeout in ms for printRaw (default 30000)
+   */
+  constructor(config = {}) {
+    this._printerName = config.name || '';
+    this._timeout     = config.timeout || 30000;
+    this._connected   = false;
   }
 
   /**
-   * Open connection to printer.
-   * @param {object} cfg - { mode, name, port, baudRate }
+   * Verify printer exists and is reachable via Windows Print Spooler.
+   * Runs `Get-Printer` PowerShell command to check.
+   * @returns {Promise<boolean>}
+   * @throws {PrinterNotFoundError} if printer name not found
    */
-  connect(config = null) {
-    const cfg = config || this.config;
-    if (!cfg) {
-      console.warn('⚠️  Printer: no config — prints will be logged only');
-      return;
+  async connect() {
+    if (!this._printerName) {
+      throw new PrinterNotFoundError(
+        'Printer name is empty. Set PRINTER_NAME env variable.'
+      );
     }
-
-    if (cfg.mode === 'windows') {
-      this._connectWindows(cfg);
-    } else {
-      this._connectSerial(cfg);
-    }
-  }
-
-  /* ───── Windows printer (PowerShell Out-Printer) ───── */
-
-  _connectWindows(cfg) {
-    if (!cfg.name) {
-      console.warn('⚠️  Printer: PRINTER_NAME empty — prints will be logged only');
-      return;
-    }
-
-    console.log(`🖨️  Printer: Windows mode — "${cfg.name}"`);
-    this.connected = true;
-    console.log(`✅ Printer: ready — "${cfg.name}"`);
-  }
-
-  /* ───── Serial printer (SerialPort) ───── */
-
-  _connectSerial(cfg) {
-    if (!cfg || !cfg.port) {
-      console.warn('⚠️  Printer: no serial port configured — prints will be logged only');
-      return;
-    }
-
-    const portPath = cfg.port;
-    const baudRate = cfg.baudRate || 9600;
-
-    console.log(`🖨️  Printer: serial — ${portPath} @ ${baudRate} bps`);
 
     try {
-      this.port = new SerialPort({
-        path: portPath,
-        baudRate: baudRate,
-        autoOpen: false,
-      });
-
-      this.port.open((err) => {
-        if (err) {
-          console.error(`❌ Printer: failed to open ${portPath}: ${err.message}`);
-          this.connected = false;
-          return;
-        }
-        console.log(`✅ Printer: connected on ${portPath}`);
-        this.connected = true;
-        this._processQueue();
-      });
-
-      this.port.on('error', (err) => {
-        console.error(`❌ Printer: port error: ${err.message}`);
-        this.connected = false;
-      });
-
-      this.port.on('close', () => {
-        console.log('⚠️  Printer: port closed');
-        this.connected = false;
-      });
+      const exists = await this._checkPrinterExists();
+      if (!exists) {
+        throw new PrinterNotFoundError(
+          `Printer "${this._printerName}" not found in Windows printer list. ` +
+          `Verify the name matches "Devices & Printers" exactly.`
+        );
+      }
+      this._connected = true;
+      console.log(`✅ Printer connected: "${this._printerName}"`);
+      return true;
     } catch (err) {
-      console.error(`❌ Printer: init error: ${err.message}`);
+      if (err instanceof PrinterNotFoundError) throw err;
+      // If PowerShell itself fails, log but don't block — printer may still work
+      console.warn(`⚠️  Printer: could not verify "${this._printerName}": ${err.message}`);
+      this._connected = true; // optimistically mark as connected
+      return true;
     }
   }
 
-  /* ───── Print lot label ───── */
+  /**
+   * Check if printer name exists in Windows printer list.
+   * @returns {Promise<boolean>}
+   */
+  async _checkPrinterExists() {
+    return new Promise((resolve, reject) => {
+      const ps = `(Get-Printer -Name "${this._printerName}" -ErrorAction SilentlyContinue) -ne $null`;
+      execFile(
+        'powershell',
+        ['-NoProfile', '-NonInteractive', '-Command', ps],
+        { timeout: 10000 },
+        (err, stdout) => {
+          if (err) return resolve(false);
+          resolve(stdout.trim() === 'True');
+        }
+      );
+    });
+  }
+
+  /**
+   * Disconnect printer — reset connection state.
+   */
+  disconnect() {
+    this._connected = false;
+    console.log('⚠️  Printer disconnected');
+  }
+
+  /**
+   * Check if printer service is in connected state.
+   * @returns {boolean}
+   */
+  isConnected() {
+    return this._connected;
+  }
+
+  /**
+   * Get configured printer name.
+   * @returns {string}
+   */
+  getPrinterName() {
+    return this._printerName;
+  }
 
   /**
    * Print a lot label.
-   * @param {object} lotData - from getLotPrintData()
-   *  { mo, lot, nama_produk, items: [{ rm_name, target_weight, actual_weight }] }
+   * Builds TSPL via TSPLBuilder, sends via printRaw.
+   *
+   * @param {object} data
+   * @param {string} data.mo
+   * @param {string} data.lot
+   * @param {string} data.nama_produk
+   * @returns {Promise<void>}
    */
-  async printLot(lotData) {
-    const text = this._formatLotLabel(lotData);
+  async printLot(data) {
+    const tspl = TSPLBuilder.buildLotLabel(data);
+    await this.printRaw(tspl);
+  }
 
-    if (this.config?.mode === 'windows') {
-      await this._printWindows(text);
-    } else {
-      this._write(text);
+  /**
+   * Send raw TSPL command string to printer via Windows Print Spooler.
+   *
+   * Flow:
+   *   1. Write TSPL string → UTF-8 bytes → temp binary file
+   *   2. PowerShell Write-Printer -Name "<name>" -Path "<tempfile>"
+   *   3. Delete temp file (finally block)
+   *   4. Resolve on success, reject typed error on failure
+   *
+   * @param {string} tspl - TSPL command string
+   * @returns {Promise<void>}
+   * @throws {PrinterIOError}      on temp file failure
+   * @throws {PrinterOfflineError}  on PowerShell/print failure
+   * @throws {PrinterTimeoutError}  on timeout
+   */
+  async printRaw(tspl) {
+    if (!this._printerName) {
+      throw new PrinterNotFoundError(
+        'Printer name not configured. Set PRINTER_NAME env variable.'
+      );
+    }
+
+    // ── Write temp file ──
+    const tmpFile = path.join(
+      os.tmpdir(),
+      `tspl_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.bin`
+    );
+
+    let fileHandle = null;
+    try {
+      fileHandle = await fs.promises.open(tmpFile, 'w');
+      await fileHandle.write(tspl, 0, 'utf8');
+      await fileHandle.close();
+      fileHandle = null;
+    } catch (err) {
+      if (fileHandle) await fileHandle.close().catch(() => {});
+      throw new PrinterIOError(
+        `Failed to write TSPL temp file: ${err.message}`
+      );
+    }
+
+    // ── Send via PowerShell Write-Printer ──
+    try {
+      await this._execWritePrinter(tmpFile);
+      console.log(`✅ Print sent to "${this._printerName}" (${tspl.length} bytes)`);
+    } finally {
+      // Always clean up temp file
+      try { await fs.promises.unlink(tmpFile); } catch (_) { /* ignore */ }
     }
   }
 
   /**
-   * Send formatted text to Windows printer via PowerShell Out-Printer.
+   * Execute PowerShell Write-Printer command with timeout.
+   * @param {string} filePath - Absolute path to temp file
+   * @returns {Promise<void>}
    */
-  async _printWindows(text) {
-    if (!this.config?.name) {
-      console.log('🖨️  Printer: no printer name — logged only');
-      return;
-    }
+  _execWritePrinter(filePath) {
+    return new Promise((resolve, reject) => {
+      const ps = `Write-Printer -Name "${this._printerName}" -Path "${filePath}"`;
 
-    const tmpFile = path.join(os.tmpdir(), `prn_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.txt`);
-
-    try {
-      // Write with UTF-16LE (PowerShell default) to preserve special chars
-      fs.writeFileSync(tmpFile, text, 'ucs2');
-    } catch (err) {
-      console.error(`❌ Printer: temp file error: ${err.message}`);
-      return;
-    }
-
-    try {
-      await new Promise((resolve, reject) => {
-        const ps = `Get-Content -Encoding Unicode "${tmpFile}" | Out-Printer -Name "${this.config.name}"`;
-        execFile('powershell', ['-NoProfile', '-NonInteractive', '-Command', ps], (err, stdout, stderr) => {
-          // Clean up temp file
-          try { fs.unlinkSync(tmpFile); } catch (_) {}
-
+      execFile(
+        'powershell',
+        ['-NoProfile', '-NonInteractive', '-Command', ps],
+        { timeout: this._timeout },
+        (err, stdout, stderr) => {
           if (err) {
-            console.error(`❌ Printer: PowerShell error: ${err.message}`);
-            if (stderr) console.error('  stderr:', stderr);
-            reject(err);
-          } else {
-            console.log(`✅ Printer: lot sent to "${this.config.name}"`);
-            resolve();
+            // Timeout
+            if (err.killed || err.signal === 'SIGTERM') {
+              return reject(new PrinterTimeoutError(
+                `Print timeout after ${this._timeout}ms — printer may be busy or offline`
+              ));
+            }
+
+            // PowerShell error — capture stderr
+            const errMsg = stderr || err.message || 'Unknown PowerShell error';
+            return reject(new PrinterOfflineError(
+              `Print failed for "${this._printerName}": ${errMsg.trim()}`
+            ));
           }
-        });
-      });
-    } catch (err) {
-      // Already logged above
-    }
-  }
 
-  /* ───── Format label text ───── */
+          // Check stderr for warnings
+          if (stderr && stderr.includes('Error')) {
+            return reject(new PrinterOfflineError(
+              `Print warning: ${stderr.trim()}`
+            ));
+          }
 
-  /**
-   * Format lot data into printer-friendly text.
-   * Line width for 76mm paper — ~32 chars monospace.
-   */
-  _formatLotLabel(data) {
-    const W = 32; // chars for 76mm paper
-    const sep = '='.repeat(W);
-    const dash = '-'.repeat(W);
-    const lines = [];
-
-    lines.push(sep);
-    lines.push('  LOT LABEL');
-    lines.push(sep);
-    lines.push(`  MO     : ${data.mo}`);
-    lines.push(`  Lot    : ${data.lot}`);
-    lines.push(`  Produk : ${data.nama_produk || '-'}`);
-    lines.push(sep);
-    lines.push('  RM           Target  Actual');
-    lines.push(dash);
-
-    (data.items || []).forEach((item) => {
-      const name = (item.rm_name || '').padEnd(12).slice(0, 12);
-      const tgt = (item.target_weight || 0).toFixed(2).padStart(7);
-      const act = item.actual_weight !== null
-        ? item.actual_weight.toFixed(2).padStart(7)
-        : '    N/A';
-      lines.push(`  ${name}${tgt} ${act}`);
-    });
-
-    lines.push(dash);
-    lines.push(`  Lot ${data.lot} selesai`);
-    lines.push(sep);
-    lines.push('');
-    lines.push('');
-    lines.push('');
-
-    return lines.join('\r\n');
-  }
-
-  /* ───── Serial write queue ───── */
-
-  /**
-   * Write raw bytes to serial printer.
-   * Queues if port is busy.
-   */
-  _write(text) {
-    console.log(`🖨️  Printer queue:\n${text}`);
-    this._writeQueue.push(Buffer.from(text, 'utf8'));
-    if (this.connected && !this._writing) {
-      this._processQueue();
-    }
-  }
-
-  _processQueue() {
-    if (this._writing || this._writeQueue.length === 0) return;
-    this._writing = true;
-
-    const buf = this._writeQueue.shift();
-    if (!buf) {
-      this._writing = false;
-      return;
-    }
-
-    if (this.port && this.port.isOpen) {
-      this.port.write(buf, (err) => {
-        if (err) {
-          console.error(`❌ Printer: write error: ${err.message}`);
+          resolve();
         }
-        this._writing = false;
-        setImmediate(() => this._processQueue());
-      });
-    } else {
-      console.log('🖨️  Printer: not connected — logged above');
-      this._writing = false;
-      setImmediate(() => this._processQueue());
-    }
-  }
-
-  isConnected() {
-    return this.connected;
-  }
-
-  disconnect() {
-    if (this.port && this.port.isOpen) {
-      this.port.close();
-    }
-    this.connected = false;
+      );
+    });
   }
 }
 
 module.exports = PrinterService;
+module.exports.PrinterNotFoundError = PrinterNotFoundError;
+module.exports.PrinterOfflineError  = PrinterOfflineError;
+module.exports.PrinterTimeoutError  = PrinterTimeoutError;
+module.exports.PrinterIOError       = PrinterIOError;
