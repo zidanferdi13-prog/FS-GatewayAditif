@@ -130,7 +130,7 @@ function isValidPrintData(data) {
     isValidMOString(data.mo) &&
     Number.isFinite(data.weight) &&
     Number.isFinite(data.target) &&
-    Number.isInteger(data.lot) &&
+    Number.isInteger(data.lot) && data.lot >= 1 &&
     Number.isInteger(data.rm_index);
 }
 
@@ -194,8 +194,8 @@ io.on('connection', socket => {
 
   /* ── print-lot ────────────────────────────────────── */
   socket.on('print-lot', async data => {
-    if (!data || !isValidMOString(data.mo) || typeof data.lot !== 'number') {
-      socket.emit('print-lot-data', { success: false, error: 'Invalid payload: mo (string) and lot (number) required' });
+    if (!data || !isValidMOString(data.mo) || !Number.isInteger(data.lot) || data.lot < 1) {
+      socket.emit('print-lot-data', { success: false, error: 'Invalid payload: mo (string) and lot (1-based number) required' });
       return;
     }
 

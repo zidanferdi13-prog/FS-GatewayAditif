@@ -50,6 +50,8 @@ export interface RMDetailItem {
 export interface WeightRecord {
   id:            string;
   actual_weight: number;
+  lot_number:    number;
+  no_lot:        string | null;
   timestamp:     string;
 }
 

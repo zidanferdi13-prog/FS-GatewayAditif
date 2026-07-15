@@ -53,7 +53,7 @@ class MOController {
   async reprintLot(req, res, next) {
     try {
       const { mo, lot } = req.body;
-      if (!mo || lot === undefined) {
+      if (!mo || lot === undefined || lot < 1) {
         return res.status(400).json({ success: false, message: 'Data reprint lot tidak lengkap' });
       }
       const result = await moService.reprintLot(mo, lot);

@@ -63,7 +63,7 @@ export const useMOStore = create<MOStoreState>()(
           moData:         data,
           materials,
           currentRMIndex: data.current_rm ?? 0,
-          currentLot:     data.lot ?? 0,
+          currentLot:     data.lot ?? 1,
           totalLot:       data.qty_plan,
         });
       },
@@ -92,7 +92,7 @@ export const useMOStore = create<MOStoreState>()(
 
         // End of lot — advance to next lot
         const nextLot = currentLot + 1;
-        if (nextLot >= totalLot) {
+        if (nextLot > totalLot) {
           // All lots done
           set({ currentRMIndex: 0, currentLot: nextLot });
           return 'complete';

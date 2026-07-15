@@ -39,14 +39,19 @@ export function LaporanPage() {
   // ── Computed lots ───────────────────────────────────────────────────────────
   const lots: LotView[] = detailMO
     ? Array.from({ length: detailMO.qty_plan }, (_, i) => {
-        const number = i + 1;
-        const totalWeight = detailMO.rm_details.reduce((s, rm) => s + rm.target_weight, 0);
-        const totalRecorded = detailMO.rm_details.reduce((s, rm) => {
+        const lotNum = i + 1;
+        // Filter materials to only this lot's weights
+        const materials = detailMO.rm_details.map(rm => ({
+          ...rm,
+          weights: rm.weights.filter(w => w.lot_number === lotNum),
+        }));
+        const totalWeight = materials.reduce((s, rm) => s + rm.target_weight, 0);
+        const totalRecorded = materials.reduce((s, rm) => {
           const latest = rm.weights[0]?.actual_weight ?? 0;
           return s + latest;
         }, 0);
-        const printed = detailMO.rm_details.some(rm => rm.weights.length > 0);
-        return { number, materials: detailMO.rm_details, totalWeight, totalRecorded, printed };
+        const printed = materials.some(rm => rm.weights.length > 0);
+        return { number: lotNum, materials, totalWeight, totalRecorded, printed };
       })
     : [];
 

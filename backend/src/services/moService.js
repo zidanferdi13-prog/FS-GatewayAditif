@@ -32,7 +32,7 @@ function isValidMONumber(nomor_mo) {
 function buildLotIdentity(nomor_mo, lotNumber) {
   const m = String(nomor_mo).match(/(\d{2})\/(\d{2})\/(\d+)$/);
   if (!m) return `LOT${String(lotNumber).padStart(3, '0')}`;
-  return `20${m[1]}/${m[2]}/${m[3]}/LOT${String(lotNumber).padStart(3, '0')}`;
+  return `${m[1]}/${m[2]}/${m[3]}/LOT${String(lotNumber).padStart(3, '0')}`;
 }
 
 /* ── Resume helpers ────────────────────────────────────── */
@@ -41,7 +41,7 @@ function buildLotIdentity(nomor_mo, lotNumber) {
  * Build resume payload from existing MO data + weight records.
  * Calculates how many lots are fully done and which RM index to resume at.
  */
-async function buildResumePayload(mo, weightRecords) {
+async function buildResumePayload(mo) {
   const rmDetails = (mo.rm_details || []).filter(d => d.id !== null);
   const totalRM = rmDetails.length;
 
@@ -49,17 +49,36 @@ async function buildResumePayload(mo, weightRecords) {
   const produkRMQty   = rmDetails.map(r => parseFloat(r.qty));
   const targetWeights = rmDetails.map(r => parseFloat(r.target_weight));
 
-  const totalRecords   = weightRecords.length;
-  const completedLots  = totalRM > 0 ? Math.floor(totalRecords / totalRM) : 0;
-  const currentRMIndex = totalRM > 0 ? totalRecords % totalRM : 0;
+  const maxLot = await MOModel.getMaxLotNumber(mo.id);
+  let currentLot = 1;      // 1-based — default: start at lot 1
+  let currentRMIndex = 0;
 
-  console.log(`♻️  Resuming MO ${mo.nomor_mo}: ${completedLots} lot(s) done, RM[${currentRMIndex}] next`);
+  if (maxLot > 0) {
+    const lotRecords = await MOModel.getWeightRecordsByLot(mo.id, maxLot);
+    if (lotRecords.length >= totalRM) {
+      // Previous lot fully complete, start next
+      currentLot = maxLot + 1;
+      currentRMIndex = 0;
+    } else {
+      // Still in the middle of this lot
+      currentLot = maxLot;
+      currentRMIndex = lotRecords.length;
+    }
+  }
+
+  // Safety: never overshoot qty_plan
+  if (currentLot > mo.qty_plan) {
+    currentLot = mo.qty_plan;
+    currentRMIndex = 0;
+  }
+
+  console.log(`♻️  Resuming MO ${mo.nomor_mo}: lot ${currentLot}, RM[${currentRMIndex}] next`);
 
   return {
     mo_id:           mo.id,
     nomor_mo:        mo.nomor_mo,
     qty_plan:        mo.qty_plan,
-    lot:             completedLots,
+    lot:             currentLot,
     current_rm:      currentRMIndex,
     produk_rm_items: produkRMItems,
     produk_rm_qty:   produkRMQty,
@@ -90,9 +109,8 @@ async function fetchAndProcessMO(nomor_mo) {
     if (existing.status === 'completed') {
       throw new Error('MO sudah selesai');
     }
-    // Resume active MO — get weight records, calc resume point
-    const weightRecords = await MOModel.getWeightRecordsForMOAsc(existing.id);
-    return await buildResumePayload(existing, weightRecords);
+    // Resume active MO — calc resume point from lot_number
+    return await buildResumePayload(existing);
   }
 
   // ── Fetch from Kanban API ──
@@ -153,7 +171,7 @@ async function fetchAndProcessMO(nomor_mo) {
     mo_id:           moUUID,
     nomor_mo:        moNumber,
     qty_plan,
-    lot:             lot || 0,
+    lot:             1,              // 1-based — lot 1 for fresh MO
     current_rm:      0,
     produk_rm_items: produkRMItems,
     produk_rm_qty:   produkRMQty,
@@ -188,6 +206,8 @@ async function recordPrintConfirm(data) {
       id:            crypto.randomUUID(),
       rm_detail_id:  rmDetail.id,
       actual_weight: data.weight,
+      lot_number:    data.lot,
+      no_lot:        buildLotIdentity(data.mo, data.lot),
       timestamp:     data.timestamp || new Date().toISOString(),
     });
     console.log(`✅ Weight recorded: MO=${data.mo} Lot=${data.lot} RM[${data.rm_index}]=${data.weight}kg`);
@@ -214,10 +234,8 @@ async function getLotPrintData(nomor_mo, lotNumber) {
   const totalRM = rmDetails.length;
   if (totalRM === 0) throw new Error('MO tidak memiliki RM detail');
 
-  // Get all weight records ASC, slice the ones for this lot
-  const allWeights = await MOModel.getWeightRecordsForMOAsc(mo.id);
-  const startIdx   = lotNumber * totalRM;
-  const lotWeights = allWeights.slice(startIdx, startIdx + totalRM);
+  // Get weight records for this specific lot
+  const lotWeights = await MOModel.getWeightRecordsByLot(mo.id, lotNumber);
 
   const items = rmDetails.map((rm, i) => {
     const wr = lotWeights[i];
@@ -270,6 +288,8 @@ async function getMODetail(nomor_mo) {
     rmWeightMap[wr.rm_detail_id].push({
       id:            wr.id,
       actual_weight: parseFloat(wr.actual_weight),
+      lot_number:    wr.lot_number,
+      no_lot:        wr.no_lot,
       timestamp:     wr.timestamp,
     });
   }

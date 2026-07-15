@@ -72,8 +72,8 @@ class MOModel {
   static async createWeightRecord(data) {
     const query = `
       INSERT INTO tbl_weight_records
-      (id, rm_detail_id, actual_weight, timestamp)
-      VALUES (?, ?, ?, ?)
+      (id, rm_detail_id, actual_weight, lot_number, no_lot, timestamp)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
     try {
       const ts = data.timestamp
@@ -83,6 +83,8 @@ class MOModel {
         data.id || crypto.randomUUID(),
         data.rm_detail_id,
         data.actual_weight,
+        data.lot_number || 1,
+        data.no_lot || null,
         ts || new Date().toISOString().replace('T', ' ').replace('Z', '')
       ]);
       return result;
@@ -156,7 +158,7 @@ class MOModel {
    */
   static async getWeightRecordsForMO(moId) {
     const query = `
-      SELECT wr.id, wr.rm_detail_id, wr.actual_weight, wr.timestamp
+      SELECT wr.id, wr.rm_detail_id, wr.actual_weight, wr.lot_number, wr.no_lot, wr.timestamp
       FROM tbl_weight_records wr
       JOIN tbl_mo_rm_details rm ON wr.rm_detail_id = rm.id
       WHERE rm.mo_id = ?
@@ -176,7 +178,7 @@ class MOModel {
    */
   static async getWeightRecordsForMOAsc(moId) {
     const query = `
-      SELECT wr.id, wr.rm_detail_id, wr.actual_weight, wr.timestamp
+      SELECT wr.id, wr.rm_detail_id, wr.actual_weight, wr.lot_number, wr.no_lot, wr.timestamp
       FROM tbl_weight_records wr
       JOIN tbl_mo_rm_details rm ON wr.rm_detail_id = rm.id
       WHERE rm.mo_id = ?
@@ -187,6 +189,51 @@ class MOModel {
       return rows;
     } catch (error) {
       console.error('❌ Error getting weight records ASC:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get the highest lot_number for a given MO — used for resume.
+   * Returns 0 when no records exist.
+   * @param {String} moId - MO UUID
+   * @returns {Promise<number>}
+   */
+  static async getMaxLotNumber(moId) {
+    const query = `
+      SELECT MAX(wr.lot_number) AS max_lot
+      FROM tbl_weight_records wr
+      JOIN tbl_mo_rm_details rm ON wr.rm_detail_id = rm.id
+      WHERE rm.mo_id = ?
+    `;
+    try {
+      const [rows] = await db.execute(query, [moId]);
+      return rows[0]?.max_lot ?? 0;
+    } catch (error) {
+      console.error('❌ Error getting max lot number:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get weight records for a specific lot within an MO, ordered by timestamp ASC.
+   * @param {String} moId - MO UUID
+   * @param {number} lotNumber - 1-based lot number
+   * @returns {Promise<Array>}
+   */
+  static async getWeightRecordsByLot(moId, lotNumber) {
+    const query = `
+      SELECT wr.id, wr.rm_detail_id, wr.actual_weight, wr.lot_number, wr.no_lot, wr.timestamp
+      FROM tbl_weight_records wr
+      JOIN tbl_mo_rm_details rm ON wr.rm_detail_id = rm.id
+      WHERE rm.mo_id = ? AND wr.lot_number = ?
+      ORDER BY wr.timestamp ASC
+    `;
+    try {
+      const [rows] = await db.execute(query, [moId, lotNumber]);
+      return rows;
+    } catch (error) {
+      console.error('❌ Error getting weight records by lot:', error.message);
       throw error;
     }
   }

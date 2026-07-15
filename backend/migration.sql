@@ -37,9 +37,12 @@ CREATE TABLE IF NOT EXISTS tbl_weight_records (
   id             CHAR(36)        PRIMARY KEY,
   rm_detail_id   CHAR(36)        NOT NULL,
   actual_weight  DECIMAL(10,2)   NOT NULL,
+  lot_number     INT             NOT NULL DEFAULT 1,
+  no_lot         VARCHAR(50)     DEFAULT NULL,
   timestamp      TIMESTAMP       DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_weight_rm_detail FOREIGN KEY (rm_detail_id)
     REFERENCES tbl_mo_rm_details(id) ON DELETE CASCADE,
   INDEX idx_rm_detail_id (rm_detail_id),
-  INDEX idx_timestamp (timestamp)
+  INDEX idx_timestamp (timestamp),
+  INDEX idx_lot_number (lot_number)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
