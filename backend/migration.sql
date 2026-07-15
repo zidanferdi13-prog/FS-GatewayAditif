@@ -46,3 +46,11 @@ CREATE TABLE IF NOT EXISTS tbl_weight_records (
   INDEX idx_timestamp (timestamp),
   INDEX idx_lot_number (lot_number)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Migration: add lot_number + no_lot to existing tbl_weight_records
+-- Run this ONCE if table already exists
+ALTER TABLE tbl_weight_records
+  ADD COLUMN lot_number INT NOT NULL DEFAULT 1 AFTER actual_weight,
+  ADD COLUMN no_lot VARCHAR(50) DEFAULT NULL AFTER lot_number,
+  ADD INDEX idx_lot_number (lot_number);
+
