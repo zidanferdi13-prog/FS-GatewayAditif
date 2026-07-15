@@ -1,6 +1,8 @@
 node_modules/
 frontend-react/node_modules/
 frontend-react/dist/
+frontend-react/docs/
+frontend-react/.claude/
 .env
 .DS_Store
 
@@ -22,3 +24,9 @@ Thumbs.db
 # Temporary files
 *.tmp
 .tmp/
+
+backend/.claude/
+backend/.superpowers/
+backend/docs/
+backend/node_modules/
+backend/.env

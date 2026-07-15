@@ -31,15 +31,18 @@ class PrinterService {
     if (!this._printerName)
       throw new PrinterOfflineError('No printer configured. Set PRINTER_NAME env variable.');
     await this._execGdiPrint({
+      product: String(data.nama_produk || '').replace(/"/g, '').trim(),
       mo:  String(data.mo  || '').replace(/"/g, '').trim(),
-      lot: String(data.lot || '').replace(/"/g, '').trim(),
+      lot: String(data.lot_identity || data.lot || '').replace(/"/g, '').trim(),
     });
     return { method: 'gdi' };
   }
 
   async _execGdiPrint(label) {
+    console.log(label, "data label")
     return new Promise((resolve, reject) => {
       const name = this._printerName.replace(/'/g, "''");
+      const product = label.product.replace(/'/g, "''");
       const mo   = label.mo.replace(/'/g, "''");
       const lot  = label.lot.replace(/'/g, "''");
 
@@ -88,7 +91,7 @@ public class LotLabel
         }
     }
 
-    public static void Print(string printerName, string mo, string lot)
+    public static void Print(string printerName, string mo, string lot, string product)
     {
         PrintDocument pd = new PrintDocument();
         pd.PrinterSettings.PrinterName = printerName;
@@ -113,7 +116,7 @@ public class LotLabel
 
             // Title
             Font ft = new Font("Arial", 12, FontStyle.Bold);
-            g.DrawString("BAR LABEL", ft, Brushes.Black,
+            g.DrawString(product, ft, Brushes.Black,
                 new RectangleF(left, top, w, ft.GetHeight(g)), sfC);
             ft.Dispose();
 
@@ -155,7 +158,7 @@ public class LotLabel
 }
 "@
 Add-Type -ReferencedAssemblies "System.Drawing.dll" -TypeDefinition $code
-[LotLabel]::Print('${name}', '${mo}', '${lot}')
+[LotLabel]::Print('${name}', '${mo}', '${lot}', '${product}')
 Write-Output "OK"
 `;
 

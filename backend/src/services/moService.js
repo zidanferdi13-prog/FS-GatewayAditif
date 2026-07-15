@@ -13,7 +13,7 @@
 
 const crypto = require('crypto');
 const MOModel   = require('../models/moModel');
-const { fetchData } = require('./apiService');
+const { fetchData, sendData } = require('./apiService');
 const config    = require('../config/config');
 
 /* ── Input validation helpers ──────────────────────────── */
@@ -22,6 +22,17 @@ function isValidMONumber(nomor_mo) {
   if (typeof nomor_mo !== 'string') return false;
   if (nomor_mo.length === 0 || nomor_mo.length > 60) return false;
   return /^[A-Za-z0-9\-_./]+$/.test(nomor_mo);
+}
+
+/**
+ * Build lot identity string from MO number + lot sequence.
+ * MO "WAN/MO/26/07/8657" + lot 1 → "2026/07/8657/LOT001"
+ * Falls back to "LOTxxx" if MO doesn't match known pattern.
+ */
+function buildLotIdentity(nomor_mo, lotNumber) {
+  const m = String(nomor_mo).match(/(\d{2})\/(\d{2})\/(\d+)$/);
+  if (!m) return `LOT${String(lotNumber).padStart(3, '0')}`;
+  return `20${m[1]}/${m[2]}/${m[3]}/LOT${String(lotNumber).padStart(3, '0')}`;
 }
 
 /* ── Resume helpers ────────────────────────────────────── */
@@ -219,9 +230,10 @@ async function getLotPrintData(nomor_mo, lotNumber) {
   });
 
   return {
-    mo:          nomor_mo,
-    lot:         lotNumber,
-    nama_produk: mo.nama_produk,
+    mo:           nomor_mo,
+    lot:          lotNumber,
+    lot_identity: buildLotIdentity(nomor_mo, lotNumber),
+    nama_produk:  mo.nama_produk,
     items,
   };
 }

@@ -204,6 +204,7 @@ io.on('connection', socket => {
     try {
       const printData = await moService.getLotPrintData(data.mo, data.lot);
       socket.emit('print-lot-data', { success: true, data: printData });
+      console.log(printData, "data yang mau diprint")
       console.log(`✅ Print lot data sent: MO=${data.mo} lot=${data.lot} (${printData.items.length} items)`);
 
       // Also send to local printer

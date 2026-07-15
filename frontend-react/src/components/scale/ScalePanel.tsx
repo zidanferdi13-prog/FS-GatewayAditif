@@ -1,6 +1,6 @@
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Printer } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useMOStore, selectCurrentMaterial, selectExpectedScale } from '@/store/moStore';
 import { useScaleStore } from '@/store/scaleStore';
@@ -35,6 +35,40 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
   const isActiveScale = scaleType === expectedScale;
   const target        = isActiveScale ? (currentMaterial?.targetWeight ?? 0) : 0;
   const { weight, stable, lastUpdate } = scaleState;
+
+  // ── print-lot-data feedback — listen for local printer result ─────────────
+  const showToastRef = useRef(useUIStore.getState().showToast);
+  // Keep ref fresh without re-registering the listener
+  showToastRef.current = useUIStore((s) => s.showToast);
+
+  useEffect(() => {
+    const socket = socketService.socket;
+    if (!socket) return;
+
+    const onResult = (result: { success: boolean; data?: unknown; error?: string }) => {
+      const toast = useUIStore.getState().showToast;
+      if (!result.success) {
+        console.warn('❌ Print lot failed:', result.error);
+        toast({
+          type: 'error',
+          title: 'Cetak Lot Gagal',
+          message: result.error ?? 'Printer tidak merespon',
+          duration: 6000,
+        });
+        return;
+      }
+      console.log('✅ Print lot sent to printer');
+      toast({
+        type: 'success',
+        title: 'Cetak Lot',
+        message: 'Label lot telah dikirim ke printer',
+        duration: 3000,
+      });
+    };
+
+    socket.on('print-lot-data', onResult);
+    return () => { socket.off('print-lot-data', onResult); };
+  }, []);
 
   // ── Manual confirm ────────────────────────────────────────────────────────
   const handleManualConfirm = useCallback(() => {

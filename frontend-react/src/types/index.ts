@@ -89,9 +89,10 @@ export interface PrintLotPayload {
 
 /** Print data returned by server for a completed lot */
 export interface PrintLotData {
-  mo:          string;
-  lot:         number;
-  nama_produk: string;
+  mo:           string;
+  lot:          number;
+  lot_identity: string;
+  nama_produk:  string;
   items: Array<{
     rm_index:      number;
     rm_name:       string;
