@@ -16,6 +16,7 @@ export interface MOData {
   produk_rm_items: string[];
   produk_rm_qty:   number[];
   produk_rm_kategori: string[];
+  produk_rm_antrian: number[];
   target_weights:  string[];
   /** Lot offset to resume at (if MO was partially completed) */
   lot?: number;

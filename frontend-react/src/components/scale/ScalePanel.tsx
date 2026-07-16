@@ -29,6 +29,7 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
   const moData         = useMOStore((s) => s.moData);
   const autoConfirm    = useMOStore((s) => s.autoConfirmActive);
   const currentMaterial = useMOStore(selectCurrentMaterial);
+  const currentRMIndex  = useMOStore((s) => s.currentRMIndex);
   const expectedScale  = useMOStore(selectExpectedScale);
   const openModal      = useUIStore((s) => s.openModal);
   const closeModal     = useUIStore((s) => s.closeModal);
@@ -131,13 +132,16 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
   // ── Auto-skip Kemasan material ──────────────────────────
   useEffect(() => {
     const state = useMOStore.getState();
-    const { activeMO, moData: md, currentMaterial: cm, autoConfirmActive, currentRMIndex, currentLot, totalLot } = state;
+    const { activeMO, moData: md, autoConfirmActive, currentRMIndex: idx, currentLot } = state;
+    const cm = state.materials[idx]; // currentMaterial from array, not a store key
 
-    // Guard: only run on small panel, MO active, autoConfirm NOT running
-    if (scaleType !== 'small') return;
+    // Guard: only the active scale panel, MO active, autoConfirm NOT running
+    if (scaleType !== expectedScale) return;
     if (!activeMO || !md || !cm) return;
-    if (autoConfirmActive) return;
     if (cm.kategori !== 'Kemasan') return;
+
+    // Skip if already handling (prevent StrictMode double-fire)
+    if (autoConfirmActive) return;
 
     // Show flash
     setSkipKemasanName(cm.name);
@@ -151,7 +155,7 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
       socketService.emit('print-confirm', {
         mo:         activeMO,
         lot:        currentLot,
-        rm_index:   currentRMIndex,
+        rm_index:   idx,
         rm_name:    cm.name,
         scale_used: scaleType,
         weight:     cm.targetWeight,
@@ -195,8 +199,10 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
     return () => {
       clearTimeout(timer);
       closeModal('skipKemasan');
+      // Reset autoConfirm so StrictMode re-mount can restart
+      useMOStore.getState().setAutoConfirmActive(false);
     };
-  }, [scaleType, currentMaterial, currentRMIndex, openModal, closeModal, setSkipKemasanName]);
+  }, [scaleType, expectedScale, currentRMIndex, moData, openModal, closeModal, setSkipKemasanName]);
 
   // ── Timestamp ─────────────────────────────────────────────────────────────
   const timestampText = lastUpdate

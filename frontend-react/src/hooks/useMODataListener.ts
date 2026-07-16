@@ -9,17 +9,19 @@ import type { MODataResponse } from '@/services/socket';
  * and opens the MO confirmation dialog with the returned data.
  */
 export function useMODataListener() {
-  const { openModal } = useUIStore();
-
   const handleMODataConfirm = useCallback(
     (response: { success: boolean; data?: MODataResponse; error?: string }) => {
+      const ui = useUIStore.getState();
+      ui.setMoInputLoading(false);
+
       if (response.success && response.data) {
         // Store a temporary reference so MOConfirmModal can access it
         window.__tempMOData = response.data as never;
-        openModal('moConfirm');
+        ui.closeModal('moInput');
+        ui.openModal('moConfirm');
       } else {
         console.error('MO API Error:', response.error);
-        useUIStore.getState().showToast({
+        ui.showToast({
           type:     'error',
           title:    'Gagal Memuat MO',
           message:  response.error ?? 'Periksa nomor MO dan coba lagi',
@@ -27,7 +29,7 @@ export function useMODataListener() {
         });
       }
     },
-    [openModal],
+    [],
   );
 
   useEffect(() => {

@@ -60,6 +60,7 @@ export const useMOStore = create<MOStoreState>()(
           };
         });
 
+        // Server already sorted by antrian_rm — trust the order
         set({
           moData:         data,
           materials,

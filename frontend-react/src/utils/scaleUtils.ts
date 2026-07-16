@@ -7,7 +7,7 @@ export const SMALL_SCALE_MAX_KG = 20.0;
 export const AUTO_CONFIRM_DELAY_MS = 1500;
 
 /** How long (ms) to show the "Melewati Kemasan" flash modal */
-export const SKIP_KEMASAN_DELAY_MS = 600;
+export const SKIP_KEMASAN_DELAY_MS = 1000;
 
 /**
  * Determine which physical scale should handle the given target weight.

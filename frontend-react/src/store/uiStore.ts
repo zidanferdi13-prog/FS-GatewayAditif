@@ -27,6 +27,9 @@ interface UIStoreState {
   // ── Skip Kemasan info ─────────────────────────────────────────────────────
   skipKemasanName: string;
 
+  // ── MO Input loading state ─────────────────────────────────────────────────
+  moInputLoading: boolean;
+
   // ── Actions ────────────────────────────────────────────────────────────────
   openModal:        (id: ModalId) => void;
   closeModal:       (id: ModalId) => void;
@@ -36,6 +39,7 @@ interface UIStoreState {
   setOverloadInfo:  (weight: number, target: number) => void;
   setLotComplete:   (completed: number, next: number) => void;
   setSkipKemasanName: (name: string) => void;
+  setMoInputLoading:  (loading: boolean) => void;
   toggleTheme:      () => void;
 }
 
@@ -54,6 +58,7 @@ export const useUIStore = create<UIStoreState>()(
       completedLot:   0,
       nextLot:        0,
       skipKemasanName: '',
+      moInputLoading:  false,
 
       openModal: (id) =>
         set((s) => ({ openModals: new Set([...s.openModals, id]) })),
@@ -89,6 +94,8 @@ export const useUIStore = create<UIStoreState>()(
         set({ completedLot: completed, nextLot: next }),
 
       setSkipKemasanName: (name) => set({ skipKemasanName: name }),
+
+      setMoInputLoading: (loading) => set({ moInputLoading: loading }),
 
       toggleTheme: () =>
         set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),

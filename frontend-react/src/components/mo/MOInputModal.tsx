@@ -1,9 +1,8 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect } from 'react';
 import { ClipboardList, Loader2 } from 'lucide-react';
 import { ModalOverlay } from '@/components/modal/ModalOverlay';
 import { useMOStore } from '@/store/moStore';
 import { useUIStore } from '@/store/uiStore';
-import { useScaleStore } from '@/store/scaleStore';
 import { socketService } from '@/services/socket';
 
 export function MOInputModal() {
@@ -11,56 +10,34 @@ export function MOInputModal() {
   const isOpen     = useUIStore((s) => s.openModals.has('moInput'));
   const closeModal = useUIStore((s) => s.closeModal);
   const setActiveMO = useMOStore((s) => s.setActiveMO);
-  const setWeightAboveZero = useMOStore((s) => s.setWeightAboveZero);
-  const [loading, setLoading] = useState(false);
+  const loading    = useUIStore((s) => s.moInputLoading);
+  const setMoInputLoading = useUIStore((s) => s.setMoInputLoading);
 
-  // Auto-focus on open, reset loading
+  // Auto-focus on open
   useEffect(() => {
     if (isOpen) {
-      setLoading(false);
       setTimeout(() => inputRef.current?.focus(), 60);
     }
   }, [isOpen]);
-
-  // Listen for mo-data-confirm to clear loading + close on success
-  useEffect(() => {
-    const socket = socketService.socket;
-    if (!socket) return;
-
-    const handler = (response: { success: boolean }) => {
-      setLoading(false);
-      if (response.success) {
-        closeModal('moInput');
-        if (inputRef.current) inputRef.current.value = '';
-      }
-      // On error — keep modal open so user can retry
-    };
-
-    socket.on('mo-data-confirm', handler);
-    return () => { socket.off('mo-data-confirm', handler); };
-  }, [closeModal]);
 
   const handleSubmit = () => {
     const value = inputRef.current?.value.trim() ?? '';
     if (!value || loading) return;
 
-    // Update display in header immediately
     setActiveMO(value);
-    setLoading(true);
+    setMoInputLoading(true);
 
-    // Emit to server — server will respond with mo-data-confirm
     socketService.emit('mo-confirmed', {
       mo:        value,
       timestamp: new Date().toISOString(),
     });
-    // Modal stays open until response arrives
   };
 
   const handleCancel = () => {
-    if (loading) return; // Prevent cancel while loading
+    if (loading) return;
     closeModal('moInput');
     if (inputRef.current) inputRef.current.value = '';
-    setWeightAboveZero(false);
+    setMoInputLoading(false);
   };
 
   return (
