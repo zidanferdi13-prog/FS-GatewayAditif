@@ -83,6 +83,7 @@ async function buildResumePayload(mo) {
     produk_rm_items: produkRMItems,
     produk_rm_qty:   produkRMQty,
     produk_rm_kategori: rmDetails.map(r => r.kategori || ''),
+    produk_rm_antrian: rmDetails.map((_, i) => i + 1),
     target_weights:  targetWeights,
     total_rm:        totalRM,
   };
@@ -117,6 +118,7 @@ async function fetchAndProcessMO(nomor_mo) {
   // ── Fetch from Kanban API ──
   const apiData = await sendData(config.api.kanban.findOneEndpoint, { nomor_mo });
   const item    = apiData;
+  console.log(apiData, "data api")
 
   const {
     t_mo_id, work_center, nomor_mo: moNumber, nama_produk,
@@ -130,17 +132,20 @@ async function fetchAndProcessMO(nomor_mo) {
     throw new Error('qty_plan tidak valid pada respon API');
   }
 
-  /* — Parse RM items — */
+  /* — Parse RM items — sort by antrian_rm from API */
+  const sortedRM = [...produk_rm].sort((a, b) => (a.antrian_rm ?? 999) - (b.antrian_rm ?? 999));
   const produkRMItems  = [];
   const produkRMQty    = [];
   const produkRMKategori = [];
+  const produkRMAntrian = [];
   const targetWeights  = [];
 
-  produk_rm.forEach((rm, i) => {
-    console.log(`  📦 RM[${i + 1}]: ${rm.item}  qty=${rm.qty}  kategori=${rm.kategori}`);
+  sortedRM.forEach((rm, i) => {
+    console.log(`  📦 RM[${rm.antrian_rm ?? i}]: ${rm.item}  qty=${rm.qty}  kategori=${rm.kategori}`);
     produkRMItems.push(rm.item);
     produkRMQty.push(rm.qty);
     produkRMKategori.push(rm.kategori || '');
+    produkRMAntrian.push(rm.antrian_rm ?? i + 1);
     targetWeights.push(parseFloat((rm.qty / qty_plan).toFixed(4)));
   });
 
@@ -180,6 +185,7 @@ async function fetchAndProcessMO(nomor_mo) {
     produk_rm_items: produkRMItems,
     produk_rm_qty:   produkRMQty,
     produk_rm_kategori: produkRMKategori,
+    produk_rm_antrian: produkRMAntrian,
     target_weights:  targetWeights,
     total_rm:        produkRMItems.length
   };
