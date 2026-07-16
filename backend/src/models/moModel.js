@@ -46,8 +46,8 @@ class MOModel {
   static async createRMDetail(id, data) {
     const query = `
       INSERT INTO tbl_mo_rm_details
-      (id, mo_id, item, qty, target_weight, created_at)
-      VALUES (?, ?, ?, ?, ?, NOW())
+      (id, mo_id, item, qty, target_weight, kategori, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, NOW())
     `;
     try {
       const [result] = await db.execute(query, [
@@ -55,7 +55,8 @@ class MOModel {
         data.mo_id,
         data.item,
         data.qty,
-        data.target_weight
+        data.target_weight,
+        data.kategori || null
       ]);
       return result;
     } catch (error) {

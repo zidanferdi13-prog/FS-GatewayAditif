@@ -82,6 +82,7 @@ async function buildResumePayload(mo) {
     current_rm:      currentRMIndex,
     produk_rm_items: produkRMItems,
     produk_rm_qty:   produkRMQty,
+    produk_rm_kategori: rmDetails.map(r => r.kategori || ''),
     target_weights:  targetWeights,
     total_rm:        totalRM,
   };
@@ -132,12 +133,14 @@ async function fetchAndProcessMO(nomor_mo) {
   /* — Parse RM items — */
   const produkRMItems  = [];
   const produkRMQty    = [];
+  const produkRMKategori = [];
   const targetWeights  = [];
 
   produk_rm.forEach((rm, i) => {
-    console.log(`  📦 RM[${i + 1}]: ${rm.item}  qty=${rm.qty}`);
+    console.log(`  📦 RM[${i + 1}]: ${rm.item}  qty=${rm.qty}  kategori=${rm.kategori}`);
     produkRMItems.push(rm.item);
     produkRMQty.push(rm.qty);
+    produkRMKategori.push(rm.kategori || '');
     targetWeights.push(parseFloat((rm.qty / qty_plan).toFixed(4)));
   });
 
@@ -158,7 +161,8 @@ async function fetchAndProcessMO(nomor_mo) {
         mo_id: moUUID,
         item:  produkRMItems[i],
         qty:   produkRMQty[i],
-        target_weight: targetWeights[i]
+        target_weight: targetWeights[i],
+        kategori: produkRMKategori[i]
       });
     }
     console.log('✅ RM details saved to DB');
@@ -175,6 +179,7 @@ async function fetchAndProcessMO(nomor_mo) {
     current_rm:      0,
     produk_rm_items: produkRMItems,
     produk_rm_qty:   produkRMQty,
+    produk_rm_kategori: produkRMKategori,
     target_weights:  targetWeights,
     total_rm:        produkRMItems.length
   };
@@ -298,6 +303,7 @@ async function getMODetail(nomor_mo) {
     ...rm,
     qty:           parseFloat(rm.qty),
     target_weight: parseFloat(rm.target_weight),
+    kategori:      rm.kategori || '',
     weights:       rmWeightMap[rm.id] || [],
   }));
 

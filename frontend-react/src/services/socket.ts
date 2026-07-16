@@ -32,6 +32,7 @@ export interface MODataResponse {
   total_rm:        number;
   produk_rm_items: string[];
   produk_rm_qty:   number[];
+  produk_rm_kategori: string[];
   target_weights:  string[];
   lot?:            number;
   /** RM index to resume from (for duplicate MOs) */

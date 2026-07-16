@@ -9,6 +9,7 @@ import { ConfirmResetModal } from '@/components/modal/ConfirmResetModal';
 import { OverloadAlertModal } from '@/components/modal/OverloadAlertModal';
 import { LotCompleteToast } from '@/components/modal/LotCompleteToast';
 import { CompletionModal } from '@/components/modal/CompletionModal';
+import { SkipKemasanModal } from '@/components/modal/SkipKemasanModal';
 
 /**
  * Root page that bootstraps all runtime hooks and composes the full dashboard.
@@ -35,6 +36,7 @@ export function DashboardPage() {
       <ConfirmResetModal />
       <OverloadAlertModal />
       <LotCompleteToast />
+      <SkipKemasanModal />
       <CompletionModal />
     </MainLayout>
   );

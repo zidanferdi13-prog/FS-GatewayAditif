@@ -15,6 +15,7 @@ export interface MOData {
   total_rm:        number;
   produk_rm_items: string[];
   produk_rm_qty:   number[];
+  produk_rm_kategori: string[];
   target_weights:  string[];
   /** Lot offset to resume at (if MO was partially completed) */
   lot?: number;
@@ -28,6 +29,7 @@ export interface Material {
   targetWeight: number;
   quantity:     number;
   scaleType:    ScaleType;
+  kategori:     string;
 }
 
 // ── Scale / Sensor ────────────────────────────────────────────────────────────
@@ -109,7 +111,8 @@ export type ModalId =
   | 'confirmReset'
   | 'overload'
   | 'lotComplete'
-  | 'completion';
+  | 'completion'
+  | 'skipKemasan';
 
 export interface Toast {
   id:       string;

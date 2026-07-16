@@ -9,7 +9,7 @@ import { socketService } from '@/services/socket';
 import { WeightDisplay } from './WeightDisplay';
 import { ProgressBar } from './ProgressBar';
 import { StabilityIndicator } from './StabilityIndicator';
-import { AUTO_CONFIRM_DELAY_MS } from '@/utils/scaleUtils';
+import { AUTO_CONFIRM_DELAY_MS, SKIP_KEMASAN_DELAY_MS } from '@/utils/scaleUtils';
 import type { ScaleType } from '@/types';
 
 interface ScalePanelProps {
@@ -31,6 +31,8 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
   const currentMaterial = useMOStore(selectCurrentMaterial);
   const expectedScale  = useMOStore(selectExpectedScale);
   const openModal      = useUIStore((s) => s.openModal);
+  const closeModal     = useUIStore((s) => s.closeModal);
+  const setSkipKemasanName = useUIStore((s) => s.setSkipKemasanName);
 
   const isActiveScale = scaleType === expectedScale;
   const target        = isActiveScale ? (currentMaterial?.targetWeight ?? 0) : 0;
@@ -125,6 +127,76 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
       }
     }, AUTO_CONFIRM_DELAY_MS);
   }, [scaleType, weight, target, openModal]);
+
+  // ── Auto-skip Kemasan material ──────────────────────────
+  useEffect(() => {
+    const state = useMOStore.getState();
+    const { activeMO, moData: md, currentMaterial: cm, autoConfirmActive, currentRMIndex, currentLot, totalLot } = state;
+
+    // Guard: only run on small panel, MO active, autoConfirm NOT running
+    if (scaleType !== 'small') return;
+    if (!activeMO || !md || !cm) return;
+    if (autoConfirmActive) return;
+    if (cm.kategori !== 'Kemasan') return;
+
+    // Show flash
+    setSkipKemasanName(cm.name);
+    openModal('skipKemasan');
+
+    // Mark auto-confirm active to prevent re-entry
+    state.setAutoConfirmActive(true);
+
+    const timer = setTimeout(() => {
+      // Record weight with target value
+      socketService.emit('print-confirm', {
+        mo:         activeMO,
+        lot:        currentLot,
+        rm_index:   currentRMIndex,
+        rm_name:    cm.name,
+        scale_used: scaleType,
+        weight:     cm.targetWeight,
+        target:     cm.targetWeight,
+        timestamp:  new Date().toISOString(),
+      });
+
+      closeModal('skipKemasan');
+      useMOStore.getState().setAutoConfirmActive(false);
+
+      const completedLot = currentLot; // Capture before advance
+      const result = useMOStore.getState().advanceRM();
+
+      if (result === 'next_lot' || result === 'complete') {
+        socketService.emit('print-lot', {
+          mo:        activeMO,
+          lot:       completedLot,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      if (result === 'complete') {
+        const st = useMOStore.getState();
+        socketService.emit('mo-completed', {
+          mo:             st.activeMO ?? '',
+          lots_completed: st.totalLot,
+          timestamp:      new Date().toISOString(),
+        });
+        openModal('completion');
+      }
+
+      if (result === 'next_lot') {
+        const st = useMOStore.getState();
+        useUIStore.getState().setLotComplete(completedLot, st.currentLot);
+        openModal('lotComplete');
+        setTimeout(() => useUIStore.getState().closeModal('lotComplete'), 2600);
+      }
+      // If next material is also Kemasan, effect re-fires on next render
+    }, SKIP_KEMASAN_DELAY_MS);
+
+    return () => {
+      clearTimeout(timer);
+      closeModal('skipKemasan');
+    };
+  }, [scaleType, currentMaterial, currentRMIndex, openModal, closeModal, setSkipKemasanName]);
 
   // ── Timestamp ─────────────────────────────────────────────────────────────
   const timestampText = lastUpdate

@@ -24,6 +24,9 @@ interface UIStoreState {
   completedLot: number;
   nextLot:      number;
 
+  // ── Skip Kemasan info ─────────────────────────────────────────────────────
+  skipKemasanName: string;
+
   // ── Actions ────────────────────────────────────────────────────────────────
   openModal:        (id: ModalId) => void;
   closeModal:       (id: ModalId) => void;
@@ -32,6 +35,7 @@ interface UIStoreState {
   dismissToast:     (id: string) => void;
   setOverloadInfo:  (weight: number, target: number) => void;
   setLotComplete:   (completed: number, next: number) => void;
+  setSkipKemasanName: (name: string) => void;
   toggleTheme:      () => void;
 }
 
@@ -49,6 +53,7 @@ export const useUIStore = create<UIStoreState>()(
       overloadTarget: 0,
       completedLot:   0,
       nextLot:        0,
+      skipKemasanName: '',
 
       openModal: (id) =>
         set((s) => ({ openModals: new Set([...s.openModals, id]) })),
@@ -82,6 +87,8 @@ export const useUIStore = create<UIStoreState>()(
 
       setLotComplete: (completed, next) =>
         set({ completedLot: completed, nextLot: next }),
+
+      setSkipKemasanName: (name) => set({ skipKemasanName: name }),
 
       toggleTheme: () =>
         set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),

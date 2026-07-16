@@ -54,3 +54,8 @@ ALTER TABLE tbl_weight_records
   ADD COLUMN no_lot VARCHAR(50) DEFAULT NULL AFTER lot_number,
   ADD INDEX idx_lot_number (lot_number);
 
+-- Migration: add kategori column to tbl_mo_rm_details
+ALTER TABLE tbl_mo_rm_details
+  ADD COLUMN kategori VARCHAR(50) DEFAULT NULL AFTER target_weight,
+  ADD INDEX idx_kategori (kategori);
+

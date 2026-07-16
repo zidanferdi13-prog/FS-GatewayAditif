@@ -56,6 +56,7 @@ export const useMOStore = create<MOStoreState>()(
             targetWeight: tw,
             quantity:     data.produk_rm_qty[i] ?? 1,
             scaleType:    getScaleForWeight(tw),
+            kategori:     data.produk_rm_kategori?.[i] ?? '',
           };
         });
 

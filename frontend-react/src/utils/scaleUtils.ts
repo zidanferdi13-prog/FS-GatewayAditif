@@ -6,6 +6,9 @@ export const SMALL_SCALE_MAX_KG = 20.0;
 /** How long (ms) after confirm before advancing to next RM */
 export const AUTO_CONFIRM_DELAY_MS = 1500;
 
+/** How long (ms) to show the "Melewati Kemasan" flash modal */
+export const SKIP_KEMASAN_DELAY_MS = 600;
+
 /**
  * Determine which physical scale should handle the given target weight.
  * Business rule: target ≤ 2 kg → small scale; target > 2 kg → large scale.
