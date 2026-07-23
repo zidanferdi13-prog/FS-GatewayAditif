@@ -26,6 +26,7 @@ export function ActiveMaterialCard() {
         <RMQueueList
           items={moData.produk_rm_items}
           targetWeights={moData.target_weights}
+          informasi={moData.produk_rm_informasi}
           activeIndex={currentIndex}
           layout="horizontal"
         />

@@ -59,3 +59,7 @@ ALTER TABLE tbl_mo_rm_details
   ADD COLUMN kategori VARCHAR(50) DEFAULT NULL AFTER target_weight,
   ADD INDEX idx_kategori (kategori);
 
+-- Migration: add informasi column to tbl_mo_rm_details
+ALTER TABLE tbl_mo_rm_details
+  ADD COLUMN informasi TEXT DEFAULT NULL AFTER kategori;
+

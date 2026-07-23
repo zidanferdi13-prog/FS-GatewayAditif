@@ -84,6 +84,7 @@ async function buildResumePayload(mo) {
     produk_rm_qty:   produkRMQty,
     produk_rm_kategori: rmDetails.map(r => r.kategori || ''),
     produk_rm_antrian: rmDetails.map((_, i) => i + 1),
+    produk_rm_informasi: rmDetails.map(r => r.informasi || null),
     target_weights:  targetWeights,
     total_rm:        totalRM,
   };
@@ -134,18 +135,20 @@ async function fetchAndProcessMO(nomor_mo) {
 
   /* — Parse RM items — sort by antrian_rm from API */
   const sortedRM = [...produk_rm].sort((a, b) => (a.antrian_rm ?? 999) - (b.antrian_rm ?? 999));
-  const produkRMItems  = [];
-  const produkRMQty    = [];
+  const produkRMItems    = [];
+  const produkRMQty      = [];
   const produkRMKategori = [];
-  const produkRMAntrian = [];
-  const targetWeights  = [];
+  const produkRMAntrian  = [];
+  const produkRMInformasi = [];
+  const targetWeights    = [];
 
   sortedRM.forEach((rm, i) => {
-    console.log(`  📦 RM[${rm.antrian_rm ?? i}]: ${rm.item}  qty=${rm.qty}  kategori=${rm.kategori}`);
+    console.log(`  📦 RM[${rm.antrian_rm ?? i}]: ${rm.item}  qty=${rm.qty}  kategori=${rm.kategori}  informasi=${rm.informasi || ''}`);
     produkRMItems.push(rm.item);
     produkRMQty.push(rm.qty);
     produkRMKategori.push(rm.kategori || '');
     produkRMAntrian.push(rm.antrian_rm ?? i + 1);
+    produkRMInformasi.push(rm.informasi || null);
     targetWeights.push(parseFloat((rm.qty / qty_plan).toFixed(4)));
   });
 
@@ -167,7 +170,8 @@ async function fetchAndProcessMO(nomor_mo) {
         item:  produkRMItems[i],
         qty:   produkRMQty[i],
         target_weight: targetWeights[i],
-        kategori: produkRMKategori[i]
+        kategori: produkRMKategori[i],
+        informasi: produkRMInformasi[i]
       });
     }
     console.log('✅ RM details saved to DB');
@@ -186,6 +190,7 @@ async function fetchAndProcessMO(nomor_mo) {
     produk_rm_qty:   produkRMQty,
     produk_rm_kategori: produkRMKategori,
     produk_rm_antrian: produkRMAntrian,
+    produk_rm_informasi: produkRMInformasi,
     target_weights:  targetWeights,
     total_rm:        produkRMItems.length
   };

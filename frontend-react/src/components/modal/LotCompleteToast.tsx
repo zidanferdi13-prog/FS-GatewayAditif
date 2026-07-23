@@ -27,7 +27,7 @@ export function LotCompleteToast() {
             <CheckCircle2 size={22} className="shrink-0" />
             <div>
               <div className="text-sm font-bold">Lot {completedLot} Selesai!</div>
-              <div className="text-xs text-c-green/70">Melanjutkan ke Lot {nextLot}</div>
+              <div className="text-xs text-c-green">Melanjutkan ke Lot {nextLot}</div>
             </div>
           </div>
         </motion.div>

@@ -26,7 +26,7 @@ export function SkipKemasanModal() {
             <SkipForward size={28} className="shrink-0" />
             <div>
               <div className="text-base font-bold">Melewati {skipName}</div>
-              <div className="text-xs text-c-amber/70">Material Kemasan — tidak perlu ditimbang</div>
+              <div className="text-xs text-c-amber">Material Kemasan — tidak perlu ditimbang</div>
             </div>
           </div>
         </motion.div>

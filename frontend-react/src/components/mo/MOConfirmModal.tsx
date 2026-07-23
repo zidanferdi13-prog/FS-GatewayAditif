@@ -62,7 +62,7 @@ export function MOConfirmModal() {
           <p className="text-xs font-semibold text-t-muted uppercase tracking-widest mb-3">
             Detail Produk RM
           </p>
-          <RMQueueList items={data.produk_rm_items} targetWeights={data.target_weights} />
+          <RMQueueList items={data.produk_rm_items} targetWeights={data.target_weights} informasi={data.produk_rm_informasi} />
         </div>
 
         {/* Foot */}
