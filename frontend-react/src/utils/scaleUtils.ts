@@ -4,10 +4,11 @@ import type { ScaleType } from '@/types';
 export const SMALL_SCALE_MAX_KG = 20.0;
 
 /** How long (ms) after confirm before advancing to next RM */
-export const AUTO_CONFIRM_DELAY_MS = 1500;
+export const AUTO_CONFIRM_DELAY_MS = 3000;
 
-/** How long (ms) to show the "Melewati Kemasan" flash modal */
-export const SKIP_KEMASAN_DELAY_MS = 1000;
+/** How long (ms) after advancing to next RM before auto-confirm can fire again */
+export const POST_CONFIRM_COOLDOWN_MS = 2000;
+export const SKIP_KEMASAN_DELAY_MS = 3000;
 
 /**
  * Determine which physical scale should handle the given target weight.
@@ -41,23 +42,34 @@ export function getProgressState(ratio: number): ProgressState {
 }
 
 /**
- * Round weight to 2 decimal places (same precision used in auto-confirm).
- * Uses Math.round to avoid floating-point drift.
+ * Get tolerance in kg based on target weight range.
+ *
+ * Target        | Tolerance
+ * 0 – 500 g    | 1 g   (0.001 kg)
+ * 500 – 1000 g | 2 g   (0.002 kg)
+ * 1 – 5 kg     | 10 g  (0.01 kg)
+ * > 5 kg       | 50 g  (0.05 kg)
  */
-export function roundWeight(value: number): number {
-  return Math.round(value * 100) / 100;
+export function getToleranceKg(target: number): number {
+  if (target <= 0.5)   return 0.001;   // 0 – 500 g
+  if (target <= 1)     return 0.002;   // 500 – 1000 g
+  if (target <= 5)     return 0.01;    // 1 – 5 kg
+  return 0.05;                          // > 5 kg
 }
 
 /**
- * Returns true when the weight should trigger an auto-confirm.
- * Mirrors the original condition: stable && roundedWeight === roundedTarget
+ * Returns true when weight is within tolerance of the target.
+ * Accepts weight in range [target - toleranceKg, target + toleranceKg].
  */
 export function shouldAutoConfirm(
   weight: number,
   target: number,
   stable: boolean,
 ): boolean {
-  return stable && target > 0 && roundWeight(weight) === roundWeight(target);
+  console.log(weight, target, stable, target - getToleranceKg(target), target + getToleranceKg(target))
+  return stable && target > 0 && weight >= 0 &&
+    weight >= target - getToleranceKg(target) &&
+    weight <= target + getToleranceKg(target);
 }
 
 /** Format weight for display, always 2 decimal places */

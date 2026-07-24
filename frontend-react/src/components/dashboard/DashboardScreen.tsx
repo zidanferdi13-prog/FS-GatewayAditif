@@ -1,6 +1,7 @@
 import { ScalePanel } from '@/components/scale/ScalePanel';
 import { ActiveMaterialCard } from './ActiveMaterialCard';
-import { useMOStore } from '@/store/moStore';
+import { useMOStore, selectExpectedScale } from '@/store/moStore';
+import { cn } from '@/utils/cn';
 
 /**
  * The main working area: dual scale panels side-by-side with an optional
@@ -8,13 +9,26 @@ import { useMOStore } from '@/store/moStore';
  */
 export function DashboardScreen() {
   const hasActiveMO = useMOStore((s) => !!s.moData);
+  const expectedScale = useMOStore(selectExpectedScale);
+
+  const cols = hasActiveMO
+    ? expectedScale === 'small'
+      ? '1.7fr 28px 1fr'
+      : expectedScale === 'large'
+        ? '1fr 28px 1.7fr'
+        : '1fr 28px 1fr'
+    : '1fr 28px 1fr';
 
   return (
-    <div className="grid h-full gap-3 p-4"
-         style={{
-           gridTemplateColumns: '1fr 28px 1fr',
-           gridTemplateRows: hasActiveMO ? '112px minmax(0, 1fr)' : '1fr',
-         }}>
+    <div
+      className={cn(
+        'grid h-full gap-3 p-4 rounded-lg transition-all duration-500',
+        hasActiveMO && 'bg-gradient-to-br from-c-green-dim/5 to-transparent ring-1 ring-c-green/20 shadow-glow-green/40',
+      )}
+      style={{
+        gridTemplateColumns: cols,
+        gridTemplateRows: hasActiveMO ? '112px minmax(0, 1fr)' : '1fr',
+      }}>
 
       {/* RM queue (only when MO is loaded) */}
       {hasActiveMO && (

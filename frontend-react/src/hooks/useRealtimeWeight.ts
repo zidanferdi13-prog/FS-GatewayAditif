@@ -6,6 +6,7 @@ import { useUIStore } from '@/store/uiStore';
 import {
   shouldAutoConfirm,
   AUTO_CONFIRM_DELAY_MS,
+  POST_CONFIRM_COOLDOWN_MS,
   formatWeight,
 } from '@/utils/scaleUtils';
 import type { WeightEvent } from '@/types';
@@ -144,13 +145,14 @@ export function useRealtimeWeight() {
         }
       }
 
-      // ── 4. Auto-confirm ────────────────────────────────────────────────────
-      const { moData, autoConfirmActive } = useMOStore.getState();
+      // ── 4. Auto-confirm (with cooldown after advance) ─────────────────────
+      const { moData, autoConfirmActive, lastAdvanceTime } = useMOStore.getState();
       if (
         moData &&
         scale === expected &&
         !autoConfirmActive &&
         target > 0 &&
+        Date.now() - lastAdvanceTime >= POST_CONFIRM_COOLDOWN_MS &&
         shouldAutoConfirm(weight, target, stable)
       ) {
         handleConfirm(weight, target, scale, 'auto');

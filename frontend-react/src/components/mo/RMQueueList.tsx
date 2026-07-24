@@ -1,6 +1,6 @@
 import { cn } from '@/utils/cn';
 import { getScaleForWeight } from '@/utils/scaleUtils';
-import { Info } from 'lucide-react';
+import { CheckCircle2, Info } from 'lucide-react';
 
 interface RMQueueListProps {
   items:         string[];
@@ -20,6 +20,7 @@ export function RMQueueList({ items, targetWeights, informasi, activeIndex, layo
         const target    = parseFloat(targetWeights[i]) || 0;
         const scaleType = getScaleForWeight(target);
         const isActive  = i === activeIndex;
+        const isDone    = activeIndex != null && i < activeIndex;
         const info      = informasi?.[i];
 
         return (
@@ -28,28 +29,33 @@ export function RMQueueList({ items, targetWeights, informasi, activeIndex, layo
             className={cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all duration-200',
               isHorizontal && 'min-w-[240px] flex-1',
-              isActive
+              isDone && 'opacity-50 bg-bg-card',
+              !isDone && (isActive
                 ? 'border-c-blue bg-c-blue-dim'
-                : 'border-b-card bg-bg-elevated',
+                : 'border-b-card bg-bg-elevated'),
             )}
           >
-            {/* Index */}
-            <span
-              className={cn(
-                'w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold shrink-0',
-                scaleType === 'small'
-                  ? 'bg-c-blue-dim text-c-blue-bright'
-                  : 'bg-c-purple-dim text-[var(--c-purple)]',
-              )}
-            >
-              {i + 1}
-            </span>
+            {/* Index / checkmark */}
+            {isDone ? (
+              <CheckCircle2 size={20} className="text-c-green shrink-0" />
+            ) : (
+              <span
+                className={cn(
+                  'w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold shrink-0',
+                  scaleType === 'small'
+                    ? 'bg-c-blue-dim text-c-blue-bright'
+                    : 'bg-c-purple-dim text-[var(--c-purple)]',
+                )}
+              >
+                {i + 1}
+              </span>
+            )}
 
             {/* Name + optional informasi */}
             <div className="flex-1 min-w-0">
-              <span className="text-sm font-medium text-t-primary truncate block">{name}</span>
+              <span className="text-[18px] font-medium text-t-primary truncate block">{name}</span>
               {info && (
-                <p className="text-[11px] font-bold text-c-warning mt-0.5 leading-tight">{info}</p>
+                <p className="text-[15px] font-bold text-c-warning mt-0.5 leading-tight">{info}</p>
               )}
             </div>
 

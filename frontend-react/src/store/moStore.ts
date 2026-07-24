@@ -19,6 +19,7 @@ interface MOStoreState {
   totalLot:          number;
   autoConfirmActive: boolean;
   weightAboveZero:   boolean;
+  lastAdvanceTime:   number; // timestamp ms when last advanceRM ran
 
   // ── Actions ────────────────────────────────────────────────────────────────
   setActiveMO:           (mo: string) => void;
@@ -45,6 +46,7 @@ export const useMOStore = create<MOStoreState>()(
       totalLot:          0,
       autoConfirmActive: false,
       weightAboveZero:   false,
+      lastAdvanceTime:   0,
 
       setActiveMO: (mo) => set({ activeMO: mo }),
 
@@ -80,6 +82,7 @@ export const useMOStore = create<MOStoreState>()(
           totalLot:          0,
           autoConfirmActive: false,
           weightAboveZero:   false,
+          lastAdvanceTime:   0,
         }),
 
       advanceRM: (): AdvanceResult => {
@@ -88,7 +91,7 @@ export const useMOStore = create<MOStoreState>()(
 
         // Still more RMs left in this lot
         if (nextRM < materials.length) {
-          set({ currentRMIndex: nextRM });
+          set({ currentRMIndex: nextRM, lastAdvanceTime: Date.now() });
           return 'next_rm';
         }
 
@@ -96,11 +99,11 @@ export const useMOStore = create<MOStoreState>()(
         const nextLot = currentLot + 1;
         if (nextLot > totalLot) {
           // All lots done
-          set({ currentRMIndex: 0, currentLot: nextLot });
+          set({ currentRMIndex: 0, currentLot: nextLot, lastAdvanceTime: Date.now() });
           return 'complete';
         }
 
-        set({ currentRMIndex: 0, currentLot: nextLot });
+        set({ currentRMIndex: 0, currentLot: nextLot, lastAdvanceTime: Date.now() });
         return 'next_lot';
       },
 

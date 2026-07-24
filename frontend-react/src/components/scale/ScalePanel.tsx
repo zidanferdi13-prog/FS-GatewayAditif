@@ -35,7 +35,7 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
   const closeModal     = useUIStore((s) => s.closeModal);
   const setSkipKemasanName = useUIStore((s) => s.setSkipKemasanName);
 
-  const isActiveScale = scaleType === expectedScale;
+  const isActiveScale = moData ? scaleType === expectedScale : true;
   const target        = isActiveScale ? (currentMaterial?.targetWeight ?? 0) : 0;
   const { weight, stable, lastUpdate } = scaleState;
 
@@ -223,8 +223,8 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
         // Active glow
         isActiveScale && scaleType === 'small' && 'border-c-blue shadow-glow-blue shadow-inner-blue',
         isActiveScale && scaleType === 'large' && 'border-c-purple shadow-glow-purple shadow-inner-purple',
-        !isActiveScale && 'border-b-card opacity-75',
-        'bg-gradient-to-br from-white/[0.018] via-transparent to-transparent bg-bg-card',
+        isActiveScale && 'bg-gradient-to-br from-white/[0.018] via-transparent to-transparent bg-bg-card z-10',
+        !isActiveScale && 'border-b-card opacity-55 saturate-[0.35] bg-black/40',
       )}
     >
       {/* Top accent line */}
@@ -249,7 +249,7 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
       </div>
 
       {/* ── Active material ────────────────────────────────────────────────── */}
-      <div className="text-center font-medium text-sm text-t-secondary truncate">
+      <div className="text-center font-bold text-[25px] text-t-secondary truncate">
         {currentMaterial ? currentMaterial.name : '— Bahan Material —'}
       </div>
 
@@ -260,16 +260,16 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
 
       {/* ── Target row ─────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-center gap-2 text-sm">
-        <span className="text-xs font-extrabold uppercase tracking-widest text-t-muted">TARGET</span>
+        <span className="text-lg font-extrabold uppercase tracking-widest text-t-muted">TARGET</span>
         <span
           className={cn(
-            'font-mono text-lg font-bold',
+            'font-mono text-[20px] font-bold',
             scaleType === 'small' ? 'text-c-blue' : 'text-[var(--c-purple)]',
           )}
         >
           {isActiveScale && target > 0 ? target.toFixed(2) : '--'}
         </span>
-        <span className="text-sm text-t-secondary font-medium">kg</span>
+        <span className="text-md text-t-secondary font-medium">kg</span>
       </div>
 
       {/* ── Progress bar ───────────────────────────────────────────────────── */}

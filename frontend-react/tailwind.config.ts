@@ -15,6 +15,7 @@ export default {
         'c-blue':        'var(--c-blue)',
         'c-blue-bright': 'var(--c-blue-bright)',
         'c-blue-dim':    'var(--c-blue-dim)',
+        'c-warning':     'var(--c-warning)',
         'c-purple':      'var(--c-purple)',
         'c-purple-dim':  'var(--c-purple-dim)',
         'c-green':       'var(--c-green)',
@@ -40,6 +41,7 @@ export default {
         'md':   '10px',
         'lg':   '16px',
         'xl':   '22px',
+        'xxl':  '50px',
         'pill': '999px',
       },
       animation: {
