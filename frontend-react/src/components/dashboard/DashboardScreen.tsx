@@ -27,7 +27,7 @@ export function DashboardScreen() {
       )}
       style={{
         gridTemplateColumns: cols,
-        gridTemplateRows: hasActiveMO ? '112px minmax(0, 1fr)' : '1fr',
+        gridTemplateRows: hasActiveMO ? '135px minmax(0, 1fr)' : '1fr',
       }}>
 
       {/* RM queue (only when MO is loaded) */}
