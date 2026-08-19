@@ -1,37 +1,39 @@
-import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2 } from 'lucide-react';
+import { ModalOverlay } from './ModalOverlay';
 import { useUIStore } from '@/store/uiStore';
 
 /**
- * Auto-dismissing bottom toast that appears when a lot completes.
- * Mirrors the original 2.6 s `lotIncrementModal`.
+ * Centered popup modal shown when a lot completes.
+ * No fade/opacity animation — appears instantly.
  */
 export function LotCompleteToast() {
   const isOpen       = useUIStore((s) => s.openModals.has('lotComplete'));
   const completedLot = useUIStore((s) => s.completedLot);
   const nextLot      = useUIStore((s) => s.nextLot);
+  const closeModal   = useUIStore((s) => s.closeModal);
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0, y: 60 }}
-          animate={{ opacity: 1, y: 0  }}
-          exit={{ opacity: 0, y: 40   }}
-          transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
-        >
-          <div className="flex items-center gap-3 px-5 py-3.5 rounded-xl
-                          bg-c-green-dim border border-c-green text-c-green
-                          shadow-glow-green min-w-[280px]">
-            <CheckCircle2 size={22} className="shrink-0" />
-            <div>
-              <div className="text-sm font-bold">Lot {completedLot} Selesai!</div>
-              <div className="text-xs text-c-green">Melanjutkan ke Lot {nextLot}</div>
+    <ModalOverlay isOpen={isOpen} instant onClose={() => closeModal('lotComplete')}>
+      <div className="w-full max-w-sm bg-bg-card border border-c-green/40 rounded-xl overflow-hidden">
+        <div className="flex items-center gap-3 px-6 py-5">
+          <CheckCircle2 size={32} className="shrink-0 text-c-green" />
+          <div>
+            <div className="text-lg font-extrabold text-t-primary">
+              Lot {completedLot} Selesai!
             </div>
+            <div className="text-sm text-c-green">Melanjutkan ke Lot {nextLot}</div>
           </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        </div>
+        <div className="px-6 pb-5">
+          <button
+            onClick={() => closeModal('lotComplete')}
+            className="w-full py-2.5 rounded-lg bg-c-green text-white font-bold text-sm
+                       hover:shadow-glow-green transition-all duration-200"
+          >
+            Lanjut
+          </button>
+        </div>
+      </div>
+    </ModalOverlay>
   );
 }

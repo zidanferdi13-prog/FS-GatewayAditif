@@ -32,13 +32,13 @@ export function OverloadAlertModal() {
           <h2 className="text-xl font-extrabold text-c-red uppercase tracking-widest">
             BERAT MELEBIHI TARGET
           </h2>
-          <p className="text-sm text-c-red/70 mt-1">Segera angkat material dari timbangan</p>
+          <p className="text-sm text-c-red mt-1">Segera angkat material dari timbangan</p>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 divide-x divide-c-red/20 px-0 py-0">
           <div className="flex flex-col items-center py-6 px-4">
-            <span className="text-xs font-semibold text-c-red/60 uppercase tracking-widest mb-1">
+            <span className="text-xs font-semibold text-c-red uppercase tracking-widest mb-1">
               Berat Sekarang
             </span>
             <div className="flex items-end gap-1">
@@ -49,18 +49,18 @@ export function OverloadAlertModal() {
               >
                 {overloadWeight.toFixed(2)}
               </motion.span>
-              <span className="font-mono text-base text-c-red/60 mb-0.5">kg</span>
+              <span className="font-mono text-base text-c-red mb-0.5">kg</span>
             </div>
           </div>
           <div className="flex flex-col items-center py-6 px-4">
-            <span className="text-xs font-semibold text-t-muted uppercase tracking-widest mb-1">
+            <span className="text-xs font-semibold text-c-red uppercase tracking-widest mb-1">
               Target Maksimum
             </span>
             <div className="flex items-end gap-1">
-              <span className="font-mono text-3xl font-bold text-t-secondary">
+              <span className="font-mono text-3xl font-bold text-c-red">
                 {overloadTarget.toFixed(2)}
               </span>
-              <span className="font-mono text-base text-t-muted mb-0.5">kg</span>
+              <span className="font-mono text-base text-c-red mb-0.5">kg</span>
             </div>
           </div>
         </div>

@@ -6,6 +6,9 @@ export const SMALL_SCALE_MAX_KG = 20.0;
 /** How long (ms) after confirm before advancing to next RM */
 export const AUTO_CONFIRM_DELAY_MS = 3000;
 
+/** Symmetric tolerance (±1%) around target — green colour + confirm window */
+export const WEIGHT_TOLERANCE = 0.02;
+
 export const SKIP_KEMASAN_DELAY_MS = 3000;
 
 /**
@@ -26,15 +29,14 @@ export type ProgressState = 'normal' | 'near' | 'ok' | 'over';
 
 /**
  * Classify current fill state for colour coding.
- * Fixed ordering vs original code (original had dead `is-ok` branch).
- *  - over  ≥ 100%
- *  - ok    ≥ 98%  (weight very close to / at target)
- *  - near  ≥ 90%  (amber warning)
+ *  - over   > target + tol  (red)
+ *  - ok     within ± tol    (green — at/around target)
+ *  - near   ≥ 90%           (amber warning)
  *  - normal < 90%
  */
 export function getProgressState(ratio: number): ProgressState {
-  if (ratio >= 1.0) return 'over';
-  if (ratio >= 0.98) return 'ok';
+  if (ratio > 1 + WEIGHT_TOLERANCE) return 'over';
+  if (ratio >= 1 - WEIGHT_TOLERANCE) return 'ok';
   if (ratio >= 0.9)  return 'near';
   return 'normal';
 }

@@ -9,7 +9,7 @@ import { socketService } from '@/services/socket';
 import { WeightDisplay } from './WeightDisplay';
 import { ProgressBar } from './ProgressBar';
 import { StabilityIndicator } from './StabilityIndicator';
-import { AUTO_CONFIRM_DELAY_MS, SKIP_KEMASAN_DELAY_MS } from '@/utils/scaleUtils';
+import { AUTO_CONFIRM_DELAY_MS, SKIP_KEMASAN_DELAY_MS, WEIGHT_TOLERANCE } from '@/utils/scaleUtils';
 import type { ScaleType } from '@/types';
 
 interface ScalePanelProps {
@@ -38,6 +38,12 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
   const isActiveScale = moData ? scaleType === expectedScale : true;
   const target        = isActiveScale ? (currentMaterial?.targetWeight ?? 0) : 0;
   const { weight, stable, lastUpdate } = scaleState;
+  // Confirm when weight within ± tolerance of target (beyond +tol → overload alarm)
+  const isConfirmReady =
+    isActiveScale &&
+    target > 0 &&
+    weight >= target * (1 - WEIGHT_TOLERANCE) &&
+    weight <= target * (1 + WEIGHT_TOLERANCE);
 
   // ── print-lot-data feedback — listen for local printer result ─────────────
   const showToastRef = useRef(useUIStore.getState().showToast);
@@ -124,7 +130,6 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
         const st = useMOStore.getState();
         useUIStore.getState().setLotComplete(completedLot, st.currentLot);
         openModal('lotComplete');
-        setTimeout(() => useUIStore.getState().closeModal('lotComplete'), 2600);
       }
     }, AUTO_CONFIRM_DELAY_MS);
   }, [scaleType, weight, target, openModal]);
@@ -191,7 +196,6 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
         const st = useMOStore.getState();
         useUIStore.getState().setLotComplete(completedLot, st.currentLot);
         openModal('lotComplete');
-        setTimeout(() => useUIStore.getState().closeModal('lotComplete'), 2600);
       }
       // If next material is also Kemasan, effect re-fires on next render
     }, SKIP_KEMASAN_DELAY_MS);
@@ -281,11 +285,11 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
 
         <button
           onClick={handleManualConfirm}
-          disabled={!moData || !isActiveScale || autoConfirm}
+          disabled={!moData || !isConfirmReady || autoConfirm}
           className={cn(
             'inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg border text-sm font-semibold',
             'transition-all duration-200',
-            moData && isActiveScale && !autoConfirm
+            moData && isConfirmReady && !autoConfirm
               ? [
                   scaleType === 'small'
                     ? 'border-c-blue text-c-blue bg-c-blue-dim hover:bg-c-blue hover:text-white hover:shadow-glow-blue'

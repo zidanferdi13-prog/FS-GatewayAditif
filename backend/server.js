@@ -148,6 +148,17 @@ io.on('connection', socket => {
     console.log(`👤 Client disconnected: ${socket.id}`);
   });
 
+  /* ── simulate-weight (TRIAL ONLY — remove in prod) ───── */
+  socket.on('simulate-weight', ({ scale = 'small', weight = 0, stable = true } = {}) => {
+    const svc  = scale === 'large' ? serialLarge : serialSmall;
+    const w    = Number(weight);
+    if (!Number.isFinite(w)) return;
+    const sign = w < 0 ? '-' : '+';
+    const line = `${stable ? 'ST' : 'US'},GS,${sign} ${Math.abs(w)} kg`;
+    svc._handleLine(line);
+    console.log(`🧪 SIMULATE [${scale}]: ${w} kg (${stable ? 'ST' : 'US'})`);
+  });
+
   /* ── request-history ──────────────────────────────── */
   socket.on('request-history', () => {
     socket.emit('history-data', serialClient.getHistory());
