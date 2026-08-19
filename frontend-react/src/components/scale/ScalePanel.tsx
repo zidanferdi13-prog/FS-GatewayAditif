@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Printer } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useMOStore, selectCurrentMaterial, selectExpectedScale } from '@/store/moStore';
 import { useScaleStore } from '@/store/scaleStore';
@@ -249,7 +249,7 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
       </div>
 
       {/* ── Active material ────────────────────────────────────────────────── */}
-      <div className="text-center font-bold text-[25px] text-t-secondary truncate">
+      <div className="text-center font-bold text-[34px] text-t-secondary truncate">
         {currentMaterial ? currentMaterial.name : '— Bahan Material —'}
       </div>
 
@@ -259,17 +259,17 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
       </div>
 
       {/* ── Target row ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-center gap-2 text-sm">
-        <span className="text-lg font-extrabold uppercase tracking-widest text-t-muted">TARGET</span>
+      <div className="flex items-center justify-center gap-3 text-sm">
+        <span className="text-2xl font-extrabold uppercase tracking-widest text-t-muted">TARGET</span>
         <span
           className={cn(
-            'font-mono text-[20px] font-bold',
+            'font-mono text-[30px] font-bold',
             scaleType === 'small' ? 'text-c-blue' : 'text-[var(--c-purple)]',
           )}
         >
           {isActiveScale && target > 0 ? target.toFixed(2) : '--'}
         </span>
-        <span className="text-md text-t-secondary font-medium">kg</span>
+        <span className="text-xl text-t-secondary font-medium">kg</span>
       </div>
 
       {/* ── Progress bar ───────────────────────────────────────────────────── */}
@@ -294,8 +294,8 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
               : 'border-b-card text-t-muted bg-transparent cursor-not-allowed opacity-40',
           )}
         >
-          <CheckCircle2 size={15} strokeWidth={2.5} />
-          <span>Konfirmasi</span>
+          <CheckCircle2 size={20} strokeWidth={2.5} />
+          <span className="text-lg">Konfirmasi</span>
         </button>
       </div>
     </motion.section>

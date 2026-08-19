@@ -26,7 +26,7 @@ export function ProgressBar({ weight, target, scaleType }: ProgressBarProps) {
   const fillColour  = stateColours[state][scaleType];
 
   return (
-    <div className="relative h-2 w-full rounded-full bg-bg-elevated overflow-hidden">
+    <div className="relative h-5 w-full rounded-full bg-bg-elevated overflow-hidden">
       <motion.div
         className="absolute inset-y-0 left-0 rounded-full"
         style={{ backgroundColor: fillColour }}

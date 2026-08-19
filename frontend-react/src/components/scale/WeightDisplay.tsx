@@ -32,14 +32,14 @@ export function WeightDisplay({ weight, target, scaleType }: WeightDisplayProps)
           exit={{ opacity: 0 }}
           transition={{ duration: 0.12 }}
           className={cn(
-            'font-mono text-[clamp(2.8rem,6vw,4.5rem)] font-bold leading-none tabular-nums',
+            'font-mono text-[clamp(3.5rem,8vw,6rem)] font-bold leading-none tabular-nums',
             colourClass,
           )}
         >
           {displayValue}
         </motion.span>
       </AnimatePresence>
-      <span className="font-mono text-xl font-semibold text-t-secondary mb-2">kg</span>
+      <span className="font-mono text-2xl font-semibold text-t-secondary mb-3">kg</span>
     </div>
   );
 }
