@@ -7,14 +7,14 @@ export function LotCounter() {
 
   return (
     <div className="inline-flex items-center gap-[5px] px-4 py-1.5 rounded-pill border-[1.5px] border-b-card bg-bg-card">
-      <span className="text-[9px] font-extrabold text-t-muted uppercase tracking-[1.3px] mr-0.5">
+      <span className="text-[11px] font-extrabold text-t-muted uppercase tracking-[1.3px] mr-0.5">
         LOT
       </span>
-      <span className="font-mono text-lg font-bold text-c-blue tabular-nums min-w-[22px] text-center">
+      <span className="font-mono text-xl font-bold text-c-blue tabular-nums min-w-[24px] text-center">
         {currentLot}
       </span>
-      <span className="text-t-muted text-sm">/</span>
-      <span className="font-mono text-lg font-bold text-c-blue tabular-nums min-w-[22px] text-center">
+      <span className="text-t-muted text-base">/</span>
+      <span className="font-mono text-xl font-bold text-c-blue tabular-nums min-w-[24px] text-center">
         {totalLot}
       </span>
     </div>

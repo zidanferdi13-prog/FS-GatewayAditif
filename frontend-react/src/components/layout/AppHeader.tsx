@@ -42,8 +42,8 @@ export function AppHeader() {
           strokeWidth={2.2}
         />
         <div className="flex flex-col leading-tight">
-          <span className="text-sm font-bold text-t-primary">AMA Timbangan</span>
-          <span className="text-[10px] font-medium text-t-secondary uppercase tracking-[0.9px]">
+          <span className="text-base font-bold text-t-primary">AMA Timbangan</span>
+          <span className="text-[11px] font-medium text-t-secondary uppercase tracking-[0.9px]">
             Aditif Monitor
           </span>
         </div>
@@ -56,7 +56,7 @@ export function AppHeader() {
           onClick={() => navigate('/laporan')}
           className={cn(
             'inline-flex items-center gap-1 px-3 py-1.5 rounded-pill border-[1.5px]',
-            'font-ui text-[12px] font-bold tracking-[0.4px] cursor-pointer',
+            'font-ui text-sm font-bold tracking-[0.4px] cursor-pointer',
             'transition-all duration-200 whitespace-nowrap',
             isLaporan
               ? 'text-c-blue border-c-blue bg-c-blue-dim'
@@ -71,7 +71,7 @@ export function AppHeader() {
           onClick={handleMOClick}
           className={cn(
             'inline-flex items-center gap-1 px-4 py-1.5 rounded-pill border-[1.5px]',
-            'font-ui text-[13px] font-bold tracking-[0.4px] cursor-pointer',
+            'font-ui text-[15px] font-bold tracking-[0.4px] cursor-pointer',
             'transition-all duration-200 whitespace-nowrap',
             activeMO
               ? 'text-c-green border-c-green bg-c-green-dim hover:bg-c-green hover:text-white hover:shadow-glow-green'
@@ -106,7 +106,7 @@ export function AppHeader() {
           {theme === 'dark' ? <Sun size={16} strokeWidth={2.4} /> : <Moon size={16} strokeWidth={2.4} />}
         </button>
 
-        <span className="font-mono text-sm font-semibold text-t-secondary tracking-[1.5px] min-w-[68px] text-right">
+        <span className="font-mono text-base font-semibold text-t-secondary tracking-[1.5px] min-w-[80px] text-right">
           {clock}
         </span>
       </div>

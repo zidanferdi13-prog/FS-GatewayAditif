@@ -27,7 +27,7 @@ export function DashboardScreen() {
       )}
       style={{
         gridTemplateColumns: cols,
-        gridTemplateRows: hasActiveMO ? '135px minmax(0, 1fr)' : '1fr',
+        gridTemplateRows: hasActiveMO ? '160px minmax(0, 1fr)' : '1fr',
       }}>
 
       {/* RM queue (only when MO is loaded) */}
@@ -43,7 +43,7 @@ export function DashboardScreen() {
       {/* Divider */}
       <div className="flex flex-col items-center justify-center gap-2">
         <div className="flex-1 w-px bg-b-card" />
-        <span className="text-[10px] font-extrabold text-t-muted uppercase tracking-widest
+        <span className="text-[13px] font-extrabold text-t-muted uppercase tracking-widest
                          rotate-0 py-2 px-1 border border-b-card rounded bg-bg-card">
           VS
         </span>

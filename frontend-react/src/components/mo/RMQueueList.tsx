@@ -53,9 +53,9 @@ export function RMQueueList({ items, targetWeights, informasi, activeIndex, layo
 
             {/* Name + optional informasi */}
             <div className="flex-1 min-w-0">
-              <span className="text-[18px] font-medium text-t-primary truncate block">{name}</span>
+              <span className="text-[22px] font-medium text-t-primary truncate block">{name}</span>
               {info && (
-                <p className="text-[15px] font-bold text-c-warning mt-0.5 leading-tight">{info}</p>
+                <p className="text-lg font-bold text-c-warning mt-0.5 leading-tight">{info}</p>
               )}
             </div>
 
@@ -70,12 +70,12 @@ export function RMQueueList({ items, targetWeights, informasi, activeIndex, layo
                   </span>
                 </span>
               )}
-              <span className="font-mono text-sm font-semibold text-t-secondary">
+              <span className="font-mono text-lg font-semibold text-t-secondary">
                 {target.toFixed(2)} kg
               </span>
               <span
                 className={cn(
-                  'text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded',
+                  'text-[11px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded',
                   scaleType === 'small'
                     ? 'bg-c-blue-dim text-c-blue-bright'
                     : 'bg-c-purple-dim text-[var(--c-purple)]',

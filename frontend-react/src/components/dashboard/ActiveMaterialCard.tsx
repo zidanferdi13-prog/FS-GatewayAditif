@@ -17,18 +17,18 @@ export function ActiveMaterialCard() {
     <div className="flex flex-col gap-2 h-full p-3 bg-bg-elevated border border-b-card rounded-lg">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-extrabold text-t-muted uppercase tracking-widest">
+          <span className="text-sm font-extrabold text-t-muted uppercase tracking-widest">
             Antrian RM
           </span>
           {activeMO && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[15px] font-bold font-mono
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-lg font-bold font-mono
                              bg-c-green-dim text-c-green border border-c-green/30 shadow-glow-green/30">
               <span className="w-1.5 h-1.5 rounded-full bg-c-green animate-pulse-slow" />
               {activeMO}
             </span>
           )}
         </div>
-        <span className="text-xs text-t-secondary">
+        <span className="text-sm text-t-secondary">
           {currentIndex + 1} / {moData.produk_rm_items.length}
         </span>
       </div>

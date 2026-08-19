@@ -78,6 +78,9 @@
 /* ── Base reset ──────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
+/* Scale all rem-based text/spacing up for far-screen readability */
+html { font-size: 120%; }
+
 html, body, #root {
   height: 100%;
   margin: 0;

@@ -20,7 +20,7 @@ export function StabilityIndicator({ stable }: StabilityIndicatorProps) {
           stable ? 'bg-c-green animate-pulse-slow' : 'bg-c-amber animate-pulse',
         )}
       />
-      <span className="text-[14px] font-extrabold uppercase tracking-[1.2px]">
+      <span className="text-[18px] font-extrabold uppercase tracking-[1.2px]">
         {stable ? 'STABIL' : 'GOYANG'}
       </span>
     </div>

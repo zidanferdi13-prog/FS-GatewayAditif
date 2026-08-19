@@ -22,12 +22,12 @@ export function ConnectionChip({ label, connected }: ConnectionChipProps) {
             : 'bg-t-muted',
         )}
       />
-      <span className="font-mono text-[11px] font-semibold text-t-secondary tracking-[0.4px]">
+      <span className="font-mono text-sm font-semibold text-t-secondary tracking-[0.4px]">
         {label}
       </span>
       <span
         className={cn(
-          'text-[9px] font-extrabold uppercase tracking-[1px]',
+          'text-[11px] font-extrabold uppercase tracking-[1px]',
           connected ? 'text-c-green' : 'text-t-muted',
         )}
       >

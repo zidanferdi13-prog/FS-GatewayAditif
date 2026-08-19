@@ -239,7 +239,7 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
         <div className="flex items-center gap-2">
           <span
             className={cn(
-              'inline-block px-2 py-[3px] rounded text-[10px] font-extrabold uppercase tracking-[1.5px]',
+              'inline-block px-2 py-[3px] rounded text-[13px] font-extrabold uppercase tracking-[1.5px]',
               scaleType === 'small'
                 ? 'bg-c-blue-dim text-c-blue-bright'
                 : 'bg-c-purple-dim text-[var(--c-purple)]',
@@ -247,13 +247,13 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
           >
             {BADGE_LABEL[scaleType]}
           </span>
-          <span className="text-xs text-t-secondary font-medium">{RANGE_LABEL[scaleType]}</span>
+          <span className="text-sm text-t-secondary font-medium">{RANGE_LABEL[scaleType]}</span>
         </div>
         <StabilityIndicator stable={stable} />
       </div>
 
       {/* ── Active material ────────────────────────────────────────────────── */}
-      <div className="text-center font-bold text-[34px] text-t-secondary truncate">
+      <div className="text-center font-bold text-[44px] text-t-secondary truncate">
         {currentMaterial ? currentMaterial.name : '— Bahan Material —'}
       </div>
 
@@ -264,16 +264,16 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
 
       {/* ── Target row ─────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-center gap-3 text-sm">
-        <span className="text-2xl font-extrabold uppercase tracking-widest text-t-muted">TARGET</span>
+        <span className="text-3xl font-extrabold uppercase tracking-widest text-t-muted">TARGET</span>
         <span
           className={cn(
-            'font-mono text-[30px] font-bold',
+            'font-mono text-[40px] font-bold',
             scaleType === 'small' ? 'text-c-blue' : 'text-[var(--c-purple)]',
           )}
         >
           {isActiveScale && target > 0 ? target.toFixed(2) : '--'}
         </span>
-        <span className="text-xl text-t-secondary font-medium">kg</span>
+        <span className="text-2xl text-t-secondary font-medium">kg</span>
       </div>
 
       {/* ── Progress bar ───────────────────────────────────────────────────── */}
@@ -281,7 +281,7 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
 
       {/* ── Footer ─────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between pt-1">
-        <span className="text-[11px] text-t-muted">{timestampText}</span>
+        <span className="text-sm text-t-muted">{timestampText}</span>
 
         <button
           onClick={handleManualConfirm}
@@ -299,7 +299,7 @@ export const ScalePanel = memo(function ScalePanel({ scaleType }: ScalePanelProp
           )}
         >
           <CheckCircle2 size={20} strokeWidth={2.5} />
-          <span className="text-lg">Konfirmasi</span>
+          <span className="text-xl">Konfirmasi</span>
         </button>
       </div>
     </motion.section>
