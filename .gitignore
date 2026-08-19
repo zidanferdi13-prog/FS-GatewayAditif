@@ -31,3 +31,5 @@ backend/.superpowers/
 backend/docs/
 backend/node_modules/
 backend/.env
+
+.superpowers/
