@@ -56,7 +56,7 @@ export function CompletionModal() {
               transition={{ delay: 0.15 }}
               className="flex flex-col items-center py-4 px-3 rounded-lg border border-b-card bg-bg-elevated"
             >
-              <span className="font-mono text-2xl font-bold text-t-primary">{s.value}</span>
+              <span className="font-mono text-xl font-bold text-t-primary break-all leading-tight text-center">{s.value}</span>
               <span className="text-xs text-t-muted uppercase tracking-wider mt-1">{s.label}</span>
             </motion.div>
           ))}

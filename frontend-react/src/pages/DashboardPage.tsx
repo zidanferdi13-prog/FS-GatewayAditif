@@ -10,6 +10,7 @@ import { OverloadAlertModal } from '@/components/modal/OverloadAlertModal';
 import { LotCompleteToast } from '@/components/modal/LotCompleteToast';
 import { CompletionModal } from '@/components/modal/CompletionModal';
 import { SkipKemasanModal } from '@/components/modal/SkipKemasanModal';
+import { ToastContainer } from '@/components/modal/ToastContainer';
 
 /**
  * Root page that bootstraps all runtime hooks and composes the full dashboard.
@@ -38,6 +39,7 @@ export function DashboardPage() {
       <LotCompleteToast />
       <SkipKemasanModal />
       <CompletionModal />
+      <ToastContainer />
     </MainLayout>
   );
 }
