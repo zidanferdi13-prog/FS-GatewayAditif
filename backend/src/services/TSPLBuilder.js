@@ -6,7 +6,7 @@
  * No I/O, no state — pure functions.
  *
  * Coordinate system: 203 DPI (≈8 dot/mm).
- * Label: 76mm × 100mm → 599 × 787 dots.
+ * Label: 40mm × 30mm → 320 × 240 dots.
  *
  * Built-in TSPL fonts:
  *   Font 5  — 32×53 dot (titles, large)
@@ -16,15 +16,15 @@
 
 class TSPLBuilder {
   /** Label dimensions in mm */
-  static get LABEL_WIDTH_MM()  { return 76; }
-  static get LABEL_HEIGHT_MM() { return 100; }
+  static get LABEL_WIDTH_MM()  { return 40; }
+  static get LABEL_HEIGHT_MM() { return 30; }
 
   /** Gap between labels in mm */
   static get GAP_MM() { return 3; }
 
   /** Default margins in dots */
-  static get MARGIN_X() { return 40; }   // ≈5mm
-  static get MARGIN_Y() { return 30; }   // ≈4mm
+  static get MARGIN_X() { return 15; }   // ≈2mm
+  static get MARGIN_Y() { return 10; }   // ≈1mm
 
   /** DPI constant */
   static get DPI() { return 203; }
@@ -105,32 +105,13 @@ class TSPLBuilder {
   }
 
   /**
-   * Build complete TSPL lot label.
+   * Build TSPL bar label — minimal, 40×30mm.
    *
-   * @param {object} data
-   * @param {string} data.mo           - Manufacturing Order number
-   * @param {string} data.lot          - Lot number
-   * @param {string} data.nama_produk  - Product name
-   * @returns {string} Full TSPL command string
+   * 40×30mm @ 203 DPI → 320×240 dots:
    *
-   * @example
-   * TSPLBuilder.buildLotLabel({
-   *   mo: 'MO240714001',
-   *   lot: 'LOT240714001',
-   *   nama_produk: 'PREMIX MORTAR ACIAN PUTIH 40KG'
-   * });
-   */
-  /**
-   * Build TSPL bar label — minimal, dua kolom.
-   *
-   * 76×100mm @ 203 DPI:
-   *
-   *   BAR LABEL              (Font 5)
-   *   ───────── separator    (barcode kecil)
-   *   Nomor DO  │  Nomor Lot   (Font 3)
-   *   WAN/XXXXX │  2026XXXXX   (Font 2)
-   *   █████████████████████  (Barcode Code128, penuh)
-   *         2026XXXXX         (Font 3, di bawah barcode)
+   *   WAN/MO/XXXXX       (Font 2 — Nomor DO)
+   *   ███████████████    (Barcode Code128)
+   *   26XX/LOT001        (Font 2 — Nomor Lot)
    *
    * @param {object} data
    * @param {string}   data.mo   - Nomor DO/MO
@@ -145,10 +126,10 @@ class TSPLBuilder {
     const mo  = TSPLBuilder._escape(data.mo);
     const lot = TSPLBuilder._escape(data.lot);
 
-    const W = TSPLBuilder._dot(76);   // 599 dot
-    const H = TSPLBuilder._dot(100);  // 787 dot
-    const G = TSPLBuilder._dot(3);    // 24 dot
-    const MX = 40;
+    const W = TSPLBuilder._dot(TSPLBuilder.LABEL_WIDTH_MM);   // 320 dot
+    const H = TSPLBuilder._dot(TSPLBuilder.LABEL_HEIGHT_MM);  // 240 dot
+    const G = TSPLBuilder._dot(TSPLBuilder.GAP_MM);           // 24 dot
+    const MX = TSPLBuilder.MARGIN_X;
 
     const lines = [];
 
@@ -161,30 +142,16 @@ class TSPLBuilder {
     lines.push(`CLS`);
     lines.push('');
 
-    // ── Title ──
-    lines.push(`TEXT ${MX},30,"5",0,1,1,"BAR LABEL"`);
+    // ── Nomor DO ──
+    lines.push(`TEXT ${MX},10,"2",0,1,1,"${mo}"`);
     lines.push('');
 
-    // ── Separator — barcode tipis ──
-    lines.push(`BARCODE ${MX},80,"128",30,0,0,2,2,"${lot}"`);
+    // ── Barcode Code128 ──
+    lines.push(`BARCODE ${MX},45,"128",95,0,0,1,2,"${lot}"`);
     lines.push('');
 
-    // ── Column headers ──
-    lines.push(`TEXT ${MX},130,"3",0,1,1,"Nomor DO"`);
-    lines.push(`TEXT 310,130,"3",0,1,1,"Nomor Lot"`);
-    lines.push('');
-
-    // ── Column values ──
-    lines.push(`TEXT ${MX},160,"2",0,1,1,"${mo}"`);
-    lines.push(`TEXT 310,160,"2",0,1,1,"${lot}"`);
-    lines.push('');
-
-    // ── Main barcode (full-width) ──
-    lines.push(`BARCODE ${MX},250,"128",80,1,0,2,2,"${lot}"`);
-    lines.push('');
-
-    // ── Lot text di bawah barcode ──
-    lines.push(`TEXT ${MX},370,"3",0,1,1,"${lot}"`);
+    // ── Nomor Lot di bawah barcode ──
+    lines.push(`TEXT ${MX},165,"2",0,1,1,"${lot}"`);
     lines.push('');
 
     // ── Print ──

@@ -61,10 +61,8 @@ class MOController {
       // Also print full lot label to local printer — propagate error to API
       if (this.printerService) {
         const printData = await moService.getLotPrintData(mo, lot);
-        console.log('🖨️  printLot data:', JSON.stringify(printData));
         try {
-          const printResult = await this.printerService.printLot(printData);
-          console.log('🖨️  printLot result:', printResult);
+          await this.printerService.printLot(printData);
         } catch (printErr) {
           console.error('🖨️  printLot error:', printErr.name, printErr.message);
           throw printErr;
