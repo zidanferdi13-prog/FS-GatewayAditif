@@ -20,7 +20,7 @@ class TSPLBuilder {
   static get LABEL_HEIGHT_MM() { return 30; }
 
   /** Gap between labels in mm */
-  static get GAP_MM() { return 3; }
+  static get GAP_MM() { return 2; }
 
   /** Default margins in dots */
   static get MARGIN_X() { return 15; }   // ≈2mm
