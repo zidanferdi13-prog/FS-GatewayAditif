@@ -41,6 +41,7 @@ class PrinterService {
   }
 
   async _execCupsPrint(tspl) {
+    console.log('🖨️  lp queue:', this._printerName, '| TSPL bytes:', tspl.length);
     return new Promise((resolve, reject) => {
       const child = execFile(
         'lp',
