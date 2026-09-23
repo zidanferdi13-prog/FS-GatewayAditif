@@ -67,19 +67,26 @@ describe('TSPLBuilder', () => {
       assert.throws(() => TSPLBuilder.buildLotLabel({ lot: 'L1' }), /mo is required/);
     });
 
+    it('should use 40x30mm label size', () => {
+      const result = TSPLBuilder.buildLotLabel(data);
+      assert.ok(result.includes('SIZE 320 dot,240 dot'));
+    });
+
+    it('should separate commands with LF only', () => {
+      const result = TSPLBuilder.buildLotLabel(data);
+      assert.ok(!result.includes('\r'));
+      assert.ok(result.includes('\n'));
+    });
+
     it('should throw if lot is missing', () => {
       assert.throws(() => TSPLBuilder.buildLotLabel({ mo: 'M1' }), /lot is required/);
     });
 
-    it('should wrap long product names into multiple lines', () => {
+    it('_wrapText should wrap long product names into multiple lines', () => {
       const longName = 'SUPER EXTRA LARGE PREMIX MORTAR ACIAN PUTIH SUPER WHITE 40KG PREMIUM QUALITY';
-      const result = TSPLBuilder.buildLotLabel({ mo: 'M1', lot: 'L1', nama_produk: longName });
-      const textLines = result.split('\r\n').filter(l => l.startsWith('TEXT'));
-      const prodLines = textLines.filter(l =>
-        !l.includes('"MO"') && !l.includes('"LOT"')
-        && !l.includes('"PRODUCT"') && !l.includes('"LOT LABEL"')
-      );
-      assert.ok(prodLines.length >= 2);
+      const lines = TSPLBuilder._wrapText(longName);
+      const filled = lines.filter(l => l.length > 0);
+      assert.ok(filled.length >= 2);
     });
   });
 

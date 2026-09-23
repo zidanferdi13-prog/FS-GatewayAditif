@@ -140,24 +140,20 @@ class TSPLBuilder {
     lines.push(`GAP ${G} dot,0`);
     lines.push(`DIRECTION 1`);
     lines.push(`CLS`);
-    lines.push('');
 
     // ── Nomor DO ──
     lines.push(`TEXT ${MX},10,"2",0,1,1,"${mo}"`);
-    lines.push('');
 
     // ── Barcode Code128 ──
     lines.push(`BARCODE ${MX},45,"128",95,0,0,1,2,"${lot}"`);
-    lines.push('');
 
     // ── Nomor Lot di bawah barcode ──
     lines.push(`TEXT ${MX},165,"2",0,1,1,"${lot}"`);
-    lines.push('');
 
     // ── Print ──
     lines.push(`PRINT 1,1`);
 
-    return lines.join('\r\n');
+    return lines.join('\n');
   }
 
   // ── Future builder stubs ──────────────────────────────────
