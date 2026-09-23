@@ -78,6 +78,11 @@ describe('TSPLBuilder', () => {
       assert.ok(result.includes('\n'));
     });
 
+    it('should end with a trailing newline after PRINT', () => {
+      const result = TSPLBuilder.buildLotLabel(data);
+      assert.ok(result.endsWith('PRINT 1,1\n'));
+    });
+
     it('should throw if lot is missing', () => {
       assert.throws(() => TSPLBuilder.buildLotLabel({ mo: 'M1' }), /lot is required/);
     });

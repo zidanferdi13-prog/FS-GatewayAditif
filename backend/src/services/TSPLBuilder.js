@@ -153,7 +153,8 @@ class TSPLBuilder {
     // ── Print ──
     lines.push(`PRINT 1,1`);
 
-    return lines.join('\n');
+    // Firmware TSPL menunggu line terminator untuk mengeksekusi PRINT terakhir.
+    return lines.join('\n') + '\n';
   }
 
   // ── Future builder stubs ──────────────────────────────────
